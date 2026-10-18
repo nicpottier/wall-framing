@@ -1,5 +1,6 @@
 import type { HeaderSize } from '../lib/lumber';
 import type { Issue, LayoutFrom, OpeningSpec, OpeningType, WallSpec } from '../lib/framing';
+import type { CornerType, PanelOrientation } from '../lib/sheathing';
 import { parseLength, toFraction, type Units } from '../lib/units';
 
 export type WallEnd = 'left' | 'right';
@@ -39,6 +40,16 @@ export interface WallInput {
   windowRoHeight: string;
   doorRoWidth: string;
   doorRoHeight: string;
+  sheathingOrientation: PanelOrientation;
+  sheathingThickness: string;
+  /** Floor to the bottom of the first full panel row. */
+  sheathingStart: string;
+  cornerLeft: CornerType;
+  cornerRight: CornerType;
+  seamStuds: 'single' | 'double';
+  blockSeams: 'yes' | 'no';
+  /** Drawing only: show sheathing seams over the framing. */
+  showSheathing: 'on' | 'off';
   openings: OpeningInput[];
 }
 
@@ -59,6 +70,14 @@ export const EXAMPLE_WALL: WallInput = {
   windowRoHeight: '3',
   doorRoWidth: '2',
   doorRoHeight: '2 1/2',
+  sheathingOrientation: 'vertical',
+  sheathingThickness: '2',
+  sheathingStart: '12',
+  cornerLeft: 'none',
+  cornerRight: 'none',
+  seamStuds: 'double',
+  blockSeams: 'yes',
+  showSheathing: 'on',
   openings: [
     { id: 'o1', type: 'window', label: 'W1', from: 'left', offset: '30', width: '45', height: '43 1/2', headHeight: '', header: 'auto', jacksPerSide: 'auto' },
     { id: 'o2', type: 'door', label: 'D1', from: 'right', offset: '50', width: '36', height: '80', headHeight: '', header: 'auto', jacksPerSide: 'auto' },
@@ -237,6 +256,14 @@ export function toWallSpec(input: WallInput): ParsedWall {
       topPlates: input.topPlates === '1' ? 1 : 2,
       headerPlies: input.headerPlies === '3' ? 3 : 2,
       sillPlies: input.sillPlies === '2' ? 2 : 1,
+      sheathing: {
+        orientation: input.sheathingOrientation,
+        thickness: parseLength(input.sheathingThickness),
+        startHeight: parseLength(input.sheathingStart),
+        corners: { left: input.cornerLeft, right: input.cornerRight },
+        seamStuds: input.seamStuds,
+        blockSeams: input.blockSeams === 'yes',
+      },
       openings,
     },
     inputIssues,
@@ -246,6 +273,7 @@ export function toWallSpec(input: WallInput): ParsedWall {
 // ---------- Persistence ----------
 
 const STORAGE_KEY = 'wall-framing-planner.v2';
+// Saved walls from before a setting existed pick up its default from EXAMPLE_WALL on load.
 
 export function loadWall(): WallInput {
   try {

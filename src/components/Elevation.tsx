@@ -9,9 +9,11 @@ interface Props {
   fmt: Formatter;
   highlight: string | null;
   onHighlight: (group: string | null) => void;
+  /** Overlay sheathing seams and their dimensions. */
+  showSheathing: boolean;
 }
 
-const PAD = { left: 108, right: 40, top: 64, bottom: 100 };
+const PAD = { left: 108, right: 96, top: 92, bottom: 100 };
 const MIN_WIDTH = 720;
 const MAX_HEIGHT = 620;
 
@@ -40,7 +42,7 @@ function widestBay(lo: number, hi: number, xs: number[]) {
   return best.c;
 }
 
-export function Elevation({ framing, fmt, highlight, onHighlight }: Props) {
+export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing }: Props) {
   const [wrapRef, measured] = useWidth<HTMLDivElement>();
   const { wall, plateBottom, studLength, members, openings, layout } = framing;
   const { length: L, height: H } = wall;
@@ -142,6 +144,8 @@ export function Elevation({ framing, fmt, highlight, onHighlight }: Props) {
             plateBottom={plateBottom}
           />
         ))}
+
+        {showSheathing && <SheathingOverlay framing={framing} fmt={fmt} X={X} Y={Y} />}
 
         {/* overall length */}
         <HDim x1={X(0)} x2={X(L)} y={Y(H) - 30} label={fmt(L)} ext={Y(H)} />
@@ -247,6 +251,65 @@ function OpeningOverlay({ o, framing, fmt, X, Y, plateBottom }: OverlayProps) {
           side="right"
         />
       )}
+    </g>
+  );
+}
+
+interface SheathingProps {
+  framing: Framing;
+  fmt: Formatter;
+  X: (x: number) => number;
+  Y: (z: number) => number;
+}
+
+/** Panel seams over the framing, seam positions along the top, and seam heights on the right. */
+function SheathingOverlay({ framing, fmt, X, Y }: SheathingProps) {
+  const { wall, sheathing: sh } = framing;
+  const { length: L, height: H } = wall;
+  const left = -sh.extLeft;
+  const right = L + sh.extRight;
+  const tickY = Y(H) - 48;
+  const chain = [0, ...sh.horizontalSeams];
+  const dimX = X(right) + 28;
+  const cornerTitle = (ext: number, end: string) =>
+    `Sheathing runs ${fmt(ext)} past the ${end} end of the framing to the outside corner`;
+
+  return (
+    <g className="sheath">
+      {sh.extLeft > 0 && (
+        <line className="sh-edge" x1={X(left)} y1={Y(H)} x2={X(left)} y2={Y(0)}>
+          <title>{cornerTitle(sh.extLeft, 'left')}</title>
+        </line>
+      )}
+      {sh.extRight > 0 && (
+        <line className="sh-edge" x1={X(right)} y1={Y(H)} x2={X(right)} y2={Y(0)}>
+          <title>{cornerTitle(sh.extRight, 'right')}</title>
+        </line>
+      )}
+      {sh.verticalSeams.map((s) => (
+        <line key={`vs${s.x}`} className="sh-seam" x1={X(s.x)} y1={Y(H)} x2={X(s.x)} y2={Y(0)} />
+      ))}
+      {sh.horizontalSeams.map((z) => (
+        <line key={`hs${z}`} className="sh-seam" x1={X(left)} y1={Y(z)} x2={X(right)} y2={Y(z)} />
+      ))}
+
+      {/* seam positions, measured from the layout end */}
+      <text className="cap" x={X(0) - 10} y={tickY + 4} textAnchor="end">
+        {`SHEATHING ${wall.layoutFrom === 'right' ? '←' : '→'}`}
+      </text>
+      {sh.verticalSeams.map((s) => (
+        <g key={`vt${s.x}`}>
+          <line className="sh-k" x1={X(s.x)} y1={tickY + 2} x2={X(s.x)} y2={tickY + 8} />
+          <text className="sh-t halo" x={X(s.x)} y={tickY - 2} textAnchor="middle">
+            {fmt(s.distance)}
+          </text>
+        </g>
+      ))}
+
+      {/* seam heights from the floor */}
+      {chain.slice(1).map((z, i) => (
+        <VDim key={`hd${z}`} className="sheath-dim" x={dimX} y1={Y(z)} y2={Y(chain[i]!)} label={fmt(z - chain[i]!)} ext={X(right)} side="right" />
+      ))}
     </g>
   );
 }

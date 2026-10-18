@@ -94,3 +94,60 @@ export function RoughOpeningSettings({ wall, dispatch }: { wall: WallInput; disp
     </section>
   );
 }
+
+const CORNERS = [
+  ['none', 'No corner'],
+  ['outside', 'Outside (runs past)'],
+  ['inside', 'Inside (butts in)'],
+] as const;
+
+/** 4x8 sheathing: panel direction, thickness, corner offsets and seam framing. */
+export function SheathingSettings({ wall, dispatch }: { wall: WallInput; dispatch: Dispatch<WallAction> }) {
+  const set = (key: WallSettingKey) => (value: string) => dispatch({ type: 'set', key, value });
+  const corner = (key: 'cornerLeft' | 'cornerRight', label: string) => (
+    <Field label={label}>
+      {(id) => (
+        <select id={id} value={wall[key]} onChange={(e) => set(key)(e.target.value)}>
+          {CORNERS.map(([v, t]) => (
+            <option key={v} value={v}>
+              {t}
+            </option>
+          ))}
+        </select>
+      )}
+    </Field>
+  );
+
+  return (
+    <section className="panel" aria-labelledby="sh-h">
+      <div className="panel-head">
+        <h2 className="eyebrow" id="sh-h">
+          Sheathing · 4x8
+        </h2>
+      </div>
+      <div className="fields">
+        <Segmented
+          label="Panels run"
+          value={wall.sheathingOrientation}
+          options={[['vertical', 'Vertical'], ['horizontal', 'Horizontal']]}
+          onChange={set('sheathingOrientation')}
+        />
+        <Field label="Thickness" hint={`ZIP R-9 is about 2"`}>
+          {(id) => <LengthInput id={id} value={wall.sheathingThickness} onChange={set('sheathingThickness')} />}
+        </Field>
+        <Field label="Start height" hint="Floor to bottom of the first full panel. A strip below covers the wall bottom and rim." full>
+          {(id) => <LengthInput id={id} value={wall.sheathingStart} onChange={set('sheathingStart')} />}
+        </Field>
+        {corner('cornerLeft', 'Left end corner')}
+        {corner('cornerRight', 'Right end corner')}
+        <p className="field-group full">
+          Layout and sheathing are pulled from the {wall.layoutFrom} end. An outside corner adds the sheathing thickness; an
+          inside corner adds the wall depth plus the sheathing.
+        </p>
+        <Segmented label="Seam studs" value={wall.seamStuds} options={[['single', 'Single'], ['double', 'Double']]} onChange={set('seamStuds')} />
+        <Segmented label="Block horizontal seams" value={wall.blockSeams} options={[['yes', 'Yes'], ['no', 'No']]} onChange={set('blockSeams')} />
+        <Segmented label="Show in drawing" value={wall.showSheathing} options={[['on', 'On'], ['off', 'Off']]} onChange={set('showSheathing')} />
+      </div>
+    </section>
+  );
+}

@@ -14,12 +14,13 @@ interface HDimProps {
   label: string;
   /** y of the object edge to draw extension lines from. */
   ext?: number;
+  className?: string;
 }
 
-export function HDim({ x1, x2, y, label, ext }: HDimProps) {
+export function HDim({ x1, x2, y, label, ext, className }: HDimProps) {
   const d = ext == null ? 0 : y < ext ? -1 : 1;
   return (
-    <g>
+    <g className={className}>
       {ext != null && (
         <>
           <line className="ext" x1={x1} y1={ext + d * 3} x2={x1} y2={y + d * 4} />
@@ -49,14 +50,15 @@ interface VDimProps {
   side?: 'left' | 'right';
   /** Rotate text to run along the line; 'auto' rotates when it fits. */
   rotate?: boolean | 'auto';
+  className?: string;
 }
 
-export function VDim({ x, y1, y2, label, ext, side = 'left', rotate = 'auto' }: VDimProps) {
+export function VDim({ x, y1, y2, label, ext, side = 'left', rotate = 'auto', className }: VDimProps) {
   const d = ext == null ? 0 : x < ext ? -1 : 1;
   const mid = (y1 + y2) / 2;
   const rot = rotate === true || (rotate === 'auto' && y2 - y1 > textWidth(label) + 14);
   return (
-    <g>
+    <g className={className}>
       {ext != null && (
         <>
           <line className="ext" x1={ext + d * 3} y1={y1} x2={x + d * 4} y2={y1} />

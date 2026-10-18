@@ -3,7 +3,16 @@ import type { Formatter } from '../lib/units';
 
 /** CSS swatch token for a role (top plates share the plate color, both cripple kinds share one). */
 export const swatchVar = (role: Role) => {
-  const name = role === 'topPlate' ? 'plate' : role === 'crippleTop' || role === 'crippleBottom' ? 'cripple' : role;
+  const name =
+    role === 'topPlate'
+      ? 'plate'
+      : role === 'crippleTop' || role === 'crippleBottom'
+        ? 'cripple'
+        : role === 'seamStud'
+          ? 'seam'
+          : role === 'blocking'
+            ? 'block'
+            : role;
   return `var(--w-${name})`;
 };
 
@@ -16,9 +25,11 @@ const LEGEND: [string, Role][] = [
   ['Rough sill', 'sill'],
   ['Cripple', 'crippleTop'],
   ['Filler', 'filler'],
+  ['Seam stud', 'seamStud'],
+  ['Blocking', 'blocking'],
 ];
 
-export function Legend() {
+export function Legend({ showSheathing }: { showSheathing: boolean }) {
   return (
     <div className="legend">
       {LEGEND.map(([name, role]) => (
@@ -27,6 +38,12 @@ export function Legend() {
           {name}
         </span>
       ))}
+      {showSheathing && (
+        <span>
+          <i className="sw-line" />
+          Sheathing seam
+        </span>
+      )}
     </div>
   );
 }
@@ -76,6 +93,7 @@ export function CutList({ framing, fmt, highlight, onHighlight }: CutListProps) 
             <Stat n={stats.fullStuds} label={`full-length studs @ ${fmt(framing.studLength)}`} />
             <Stat n={stats.jacks} label="jacks" />
             <Stat n={stats.cripples} label="cripples" />
+            <Stat n={stats.blocks} label="blocks" />
             <Stat n={stats.headers} label={stats.headers === 1 ? 'header' : 'headers'} />
             <Stat n={Math.ceil(stats.linealFeet)} label="lineal ft of 2x" />
           </div>

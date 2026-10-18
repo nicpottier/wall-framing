@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { computeFraming, type Framing, type OpeningSpec, type Role, type WallSpec } from './framing';
+import type { SheathingSpec } from './sheathing';
 import { makeFormatter } from './units';
 
 const fmt = makeFormatter('in');
+
+/** Seams on 16" layout with no corner offsets, single seam studs, and no seams inside the wall. */
+const NO_SHEATHING_EFFECTS: SheathingSpec = {
+  orientation: 'vertical',
+  thickness: 0,
+  startHeight: 0,
+  corners: { left: 'none', right: 'none' },
+  seamStuds: 'single',
+  blockSeams: true,
+};
 
 const wall = (over: Partial<WallSpec> = {}): WallSpec => ({
   length: 240,
@@ -12,6 +23,7 @@ const wall = (over: Partial<WallSpec> = {}): WallSpec => ({
   topPlates: 2,
   headerPlies: 2,
   sillPlies: 1,
+  sheathing: NO_SHEATHING_EFFECTS,
   openings: [],
   ...over,
 });
@@ -155,5 +167,78 @@ describe('conflicts', () => {
     // king at 145 with a layout stud at 143.25..144.75
     const f = frame(wall({ openings: [opening({ type: 'door', x: 148, width: 38, height: 82.5, sill: 0 })] }));
     expect(f.issues.some((i) => i.level === 'note')).toBe(true);
+  });
+});
+
+describe('sheathing', () => {
+  const sheathing = (over: Partial<SheathingSpec> = {}): SheathingSpec => ({ ...NO_SHEATHING_EFFECTS, ...over });
+
+  it('pulls layout in by the sheathing thickness at an outside corner', () => {
+    const f = frame(wall({ sheathing: sheathing({ thickness: 2, corners: { left: 'outside', right: 'none' } }) }));
+    expect(f.layout[0]).toEqual({ center: 14, distance: 14 });
+    expect(f.sheathing.verticalSeams[0]).toEqual({ x: 46, distance: 46 });
+    // the stud under the seam is centered on it
+    expect(xs(f, 'stud')).toContain(46 - 0.75);
+  });
+
+  it('pulls layout in by wall depth plus sheathing at an inside corner', () => {
+    const f = frame(wall({ sheathing: sheathing({ thickness: 2, corners: { left: 'inside', right: 'none' } }) }));
+    expect(f.layout[0]!.center).toBeCloseTo(16 - 7.5);
+    expect(f.sheathing.verticalSeams[0]!.x).toBeCloseTo(48 - 7.5);
+  });
+
+  it('uses the corner at the end the layout is pulled from', () => {
+    const f = frame(wall({ layoutFrom: 'right', sheathing: sheathing({ thickness: 2, corners: { left: 'inside', right: 'outside' } }) }));
+    expect(f.layout[0]).toEqual({ center: 240 - 14, distance: 14 });
+    expect(f.sheathing.verticalSeams[0]!.x).toBe(240 - 46);
+  });
+
+  it('straddles vertical seams with double studs, replacing the layout stud', () => {
+    const f = frame(wall({ sheathing: sheathing({ seamStuds: 'double' }) }));
+    const seam = xs(f, 'seamStud');
+    expect(seam).toEqual([46.5, 48, 94.5, 96, 142.5, 144, 190.5, 192]);
+    expect(xs(f, 'stud')).not.toContain(47.25);
+  });
+
+  it('adds a centered stud when a seam misses the layout', () => {
+    const f = frame(wall({ spacing: 19.2, sheathing: sheathing({ seamStuds: 'single' }) }));
+    expect(xs(f, 'seamStud')).toContain(47.25);
+  });
+
+  it('notes a seam over an opening with nothing behind it', () => {
+    const f = frame(wall({ spacing: 19.2, openings: [opening()] }));
+    expect(f.issues.some((i) => i.level === 'note' && /seam 48" from the left end falls inside W1/.test(i.message))).toBe(true);
+  });
+
+  it('blocks horizontal seams across every bay, centered on the seam', () => {
+    const f = frame(wall({ sheathing: sheathing({ startHeight: 12 }) }));
+    const blocks = of(f, 'blocking');
+    expect(blocks.every((b) => b.z === 11.25)).toBe(true);
+    // blocks plus the studs between the end studs fill 1 1/2" to 238 1/2"
+    const posts = of(f, 'stud').length - 2;
+    expect(blocks.reduce((a, b) => a + b.w, 0) + posts * 1.5).toBeCloseTo(237);
+  });
+
+  it('skips blocking inside rough openings but blocks between cripples', () => {
+    const f = frame(
+      wall({
+        sheathing: sheathing({ startHeight: 12 }),
+        openings: [opening(), opening({ id: 'd', label: 'D1', type: 'door', x: 152, width: 38, height: 82.5, sill: 0 })],
+      }),
+    );
+    const blocks = of(f, 'blocking');
+    expect(blocks.some((b) => b.x < 190 && b.x + b.w > 152)).toBe(false); // door
+    expect(blocks.some((b) => b.x >= 30 && b.x + b.w <= 78)).toBe(true); // under the window sill
+  });
+
+  it('puts horizontal panels on 4\' rows from the start height', () => {
+    const f = frame(wall({ sheathing: sheathing({ orientation: 'horizontal', startHeight: 12 }) }));
+    expect(f.sheathing.horizontalSeams).toEqual([12, 60]);
+    expect(f.sheathing.verticalSeams.map((s) => s.x)).toEqual([96, 192]);
+  });
+
+  it('can turn blocking off', () => {
+    const f = frame(wall({ sheathing: sheathing({ startHeight: 12, blockSeams: false }) }));
+    expect(of(f, 'blocking')).toHaveLength(0);
   });
 });
