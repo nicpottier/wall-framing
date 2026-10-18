@@ -102,8 +102,9 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing,
   const { length: L, height: H } = wall;
   const flipped = view === 'deck';
 
-  // Drawing extends above the wall when sheathing runs past the top plate.
-  const zTop = showSheathing ? Math.max(H, framing.sheathing.top) : H;
+  // Standing, the drawing extends above the wall when sheathing runs past the top plate.
+  // On the deck that part isn't on the wall yet, so it isn't shown.
+  const zTop = showSheathing && !flipped ? Math.max(H, framing.sheathing.top) : H;
   const padL = flipped ? PAD.end : PAD.start;
   const padR = flipped ? PAD.start : PAD.end;
   const padT = flipped ? PAD.bottom : PAD.top;
@@ -192,7 +193,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing,
           <OpeningOverlay key={o.spec.id} o={o} framing={framing} fmt={fmt} v={v} plateBottom={plateBottom} />
         ))}
 
-        {showSheathing && <SheathingOverlay framing={framing} fmt={fmt} v={v} />}
+        {showSheathing && <SheathingOverlay framing={framing} fmt={fmt} v={v} aboveWall={!flipped} />}
 
         {/* overall length */}
         <HDim x1={X(0)} x2={X(L)} y={Y(zTop) - 30 * bt} label={fmt(L)} ext={Y(H)} />
@@ -309,17 +310,21 @@ interface SheathingProps {
   framing: Framing;
   fmt: Formatter;
   v: ViewMap;
+  /** Draw sheathing that runs past the top plate. */
+  aboveWall: boolean;
 }
 
 /** Panel seams over the framing, seam positions past the top plate, and seam heights off the right end. */
-function SheathingOverlay({ framing, fmt, v }: SheathingProps) {
+function SheathingOverlay({ framing, fmt, v, aboveWall }: SheathingProps) {
   const { wall, sheathing: sh } = framing;
   const { length: L, height: H } = wall;
   const { X, Y, sx, bt } = v;
   const out: Dir = bt === 1 ? -1 : 1; // screen direction out past the top
   const left = -sh.extLeft;
   const right = L + sh.extRight;
-  const top = sh.top;
+  // Highest sheathing drawn, and whether a top edge past the wall is being left off.
+  const top = aboveWall ? sh.top : Math.min(sh.top, H);
+  const cutOff = sh.top > top;
   const tickY = Y(Math.max(H, top)) + 48 * out;
   // Seams, then the wall top and the sheathing top, measured up from the floor.
   const chain = [0, ...sh.horizontalSeams, ...(top > H ? [H, top] : [top])];
@@ -337,12 +342,16 @@ function SheathingOverlay({ framing, fmt, v }: SheathingProps) {
           {sh.extRight === 0 && <line className="sh-edge" x1={X(L)} y1={Y(top)} x2={X(L)} y2={Y(H)} />}
         </>
       )}
-      <line className="sh-top" x1={X(left)} y1={Y(top)} x2={X(right)} y2={Y(top)}>
-        <title>{`Top of sheathing ${fmt(top)} from the floor${top > H ? `, ${fmt(top - H)} above the top plate` : ''}`}</title>
-      </line>
-      <text className="sh-t halo" x={Math.min(X(left), X(right)) + 4} y={v.textAt(Y(top), 4, 12, top > H ? out : bt)}>
-        {`TOP OF SHEATHING ${fmt(top)}`}
-      </text>
+      {!cutOff && (
+        <>
+          <line className="sh-top" x1={X(left)} y1={Y(top)} x2={X(right)} y2={Y(top)}>
+            <title>{`Top of sheathing ${fmt(top)} from the floor${top > H ? `, ${fmt(top - H)} above the top plate` : ''}`}</title>
+          </line>
+          <text className="sh-t halo" x={Math.min(X(left), X(right)) + 4} y={v.textAt(Y(top), 4, 12, top > H ? out : bt)}>
+            {`TOP OF SHEATHING ${fmt(top)}`}
+          </text>
+        </>
+      )}
       {sh.extLeft > 0 && (
         <line className="sh-edge" x1={X(left)} y1={Y(top)} x2={X(left)} y2={Y(0)}>
           <title>{cornerTitle(sh.extLeft, 'left')}</title>

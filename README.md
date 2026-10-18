@@ -51,7 +51,7 @@ The data flow is one way: **form text → `toWallSpec` → `computeFraming` → 
 ### Views
 
 - **Standing**: elevation from outside.
-- **On the deck**: the wall as it's framed lying on the subfloor before lifting, sheathing side up. It's the elevation rotated 180°: bottom plate at the top (the deck edge it pivots on), ends swapped. Text stays upright and dimensions follow their side of the wall.
+- **On the deck**: the wall as it's framed lying on the subfloor before lifting, sheathing side up. It's the elevation rotated 180°: bottom plate at the top (the deck edge it pivots on), ends swapped. Text stays upright and dimensions follow their side of the wall. Sheathing that runs past the top plate is left off, since it is not on the wall yet.
 
 ### Sheathing (4x8)
 
