@@ -53,9 +53,11 @@ interface SegmentedProps<V extends string> {
   onChange: (value: V) => void;
   /** Render without the field wrapper and label. */
   bare?: boolean;
+  /** Span the full row of a fields grid. */
+  full?: boolean;
 }
 
-export function Segmented<V extends string>({ label, value, options, onChange, bare }: SegmentedProps<V>) {
+export function Segmented<V extends string>({ label, value, options, onChange, bare, full }: SegmentedProps<V>) {
   const group = (
     <div className="seg" role="group" aria-label={label}>
       {options.map(([v, text]) => (
@@ -67,10 +69,19 @@ export function Segmented<V extends string>({ label, value, options, onChange, b
   );
   if (bare) return group;
   return (
-    <div className="field">
+    <div className={`field${full ? ' full' : ''}`}>
       <span className="lbl">{label}</span>
       {group}
     </div>
+  );
+}
+
+/** Open/closed marker for collapsible sections; CSS turns it when open. */
+export function Chevron() {
+  return (
+    <svg className="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+      <path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -97,9 +108,7 @@ export function Panel({ title, summary, actions, collapsible, tone, children }: 
             <h2 className="eyebrow">{title}</h2>
             {summary && <span className="panel-summary">{summary}</span>}
           </span>
-          <svg className="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-            <path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <Chevron />
         </summary>
         {children}
       </details>

@@ -436,6 +436,50 @@ input.invalid {
   font: 500 13px var(--f-mono);
 }
 
+/* Rough opening defaults, above the opening cards */
+.subpanel {
+  margin: 0 12px 12px;
+  border: 1px solid color-mix(in srgb, var(--tone, var(--line)) 25%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--tone, var(--panel)) 4%, var(--panel));
+}
+.subpanel > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  list-style: none;
+  cursor: pointer;
+}
+.subpanel > summary::-webkit-details-marker {
+  display: none;
+}
+.subpanel > summary .panel-title {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.subpanel > summary .panel-summary {
+  max-width: 100%;
+}
+.subpanel[open] > summary {
+  border-bottom: 1px solid color-mix(in srgb, var(--tone, var(--line)) 18%, var(--line-2));
+}
+.subpanel[open] > summary .panel-summary {
+  display: none;
+}
+.subpanel[open] .chev {
+  transform: rotate(180deg);
+}
+.subpanel-title {
+  font: 600 13px var(--f-ui);
+  color: var(--ink);
+}
+.subpanel .fields {
+  padding: 12px;
+}
+
 /* ---------- Opening cards ---------- */
 .ops {
   display: flex;

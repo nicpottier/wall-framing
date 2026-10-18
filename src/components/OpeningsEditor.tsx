@@ -2,8 +2,8 @@ import { useId, type Dispatch } from 'react';
 import type { OpeningType } from '../lib/framing';
 import { HEADER_TYPES, TYPICAL_HEADER, headerName, headerType } from '../lib/lumber';
 import type { Formatter } from '../lib/units';
-import { resolveOpening, type OpeningInput, type WallAction, type WallInput } from '../state/wall';
-import { Field, LengthInput, Panel, Segmented } from './controls';
+import { resolveOpening, type OpeningInput, type WallAction, type WallInput, type WallSettingKey } from '../state/wall';
+import { Chevron, Field, LengthInput, Panel, Segmented } from './controls';
 
 interface Props {
   wall: WallInput;
@@ -31,6 +31,7 @@ export function OpeningsEditor({ wall, errorIds, fmt, dispatch }: Props) {
         </div>
       }
     >
+      <RoughOpeningDefaults wall={wall} dispatch={dispatch} />
       <div className="ops">
         {count === 0 && <p className="empty">No openings yet. Add a window or door to frame it in.</p>}
         {wall.openings.map((o) => (
@@ -139,15 +140,12 @@ function OpeningCard({ opening: o, wall, hasError, fmt, dispatch }: CardProps) {
         <Field label="Header">
           {(id) => (
             <select id={id} value={o.header} onChange={(e) => patch({ header: e.target.value as OpeningInput['header'] })}>
-              <option value="auto">Auto · {headerName(headerType(TYPICAL_HEADER))} typ.</option>
-              <option value={TYPICAL_HEADER}>{headerName(headerType(TYPICAL_HEADER))}</option>
-              <optgroup label="Beam schedule">
-                {HEADER_TYPES.filter((h) => h.mark).map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.mark} · {h.label}
-                  </option>
-                ))}
-              </optgroup>
+              <option value="auto">Auto ({headerName(headerType(TYPICAL_HEADER))})</option>
+              {HEADER_TYPES.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {headerName(h)}
+                </option>
+              ))}
             </select>
           )}
         </Field>
@@ -178,5 +176,42 @@ function OpeningCard({ opening: o, wall, hasError, fmt, dispatch }: CardProps) {
         </footer>
       )}
     </article>
+  );
+}
+
+/** Wall-wide rules for sizing rough openings from window and door unit sizes, shown above the cards. */
+function RoughOpeningDefaults({ wall, dispatch }: { wall: WallInput; dispatch: Dispatch<WallAction> }) {
+  const set = (key: WallSettingKey) => (value: string) => dispatch({ type: 'set', key, value });
+  const summary = `Head ${wall.windowHeadHeight || '—'}" · ${wall.headerMount === 'dropped' ? 'headers under plate' : 'headers on opening'} · window +${wall.windowRoWidth}/${wall.windowRoHeight} · door +${wall.doorRoWidth}/${wall.doorRoHeight}`;
+
+  return (
+    <details className="subpanel">
+      <summary>
+        <span className="panel-title">
+          <span className="subpanel-title">Rough opening defaults</span>
+          <span className="panel-summary">{summary}</span>
+        </span>
+        <Chevron />
+      </summary>
+      <div className="fields">
+        <Field label="Window head height" hint="Floor to top of R.O. Windows can override it.">
+          {(id) => <LengthInput id={id} value={wall.windowHeadHeight} onChange={set('windowHeadHeight')} />}
+        </Field>
+        <Segmented label="Rough sill" value={wall.sillPlies} options={[['1', 'Single'], ['2', 'Double']]} onChange={set('sillPlies')} />
+        <Segmented
+          full
+          label="Headers"
+          value={wall.headerMount}
+          options={[['dropped', 'Tight under top plate'], ['onJacks', 'On top of opening']]}
+          onChange={set('headerMount')}
+        />
+        <p className="field-note full">Tight under the top plate, with cripples down to a flat head plate, is typical per 10/S4.1.</p>
+        <p className="field-group full">Added to the unit size</p>
+        <Field label="Window width +">{(id) => <LengthInput id={id} value={wall.windowRoWidth} onChange={set('windowRoWidth')} />}</Field>
+        <Field label="Window height +">{(id) => <LengthInput id={id} value={wall.windowRoHeight} onChange={set('windowRoHeight')} />}</Field>
+        <Field label="Door width +">{(id) => <LengthInput id={id} value={wall.doorRoWidth} onChange={set('doorRoWidth')} />}</Field>
+        <Field label="Door height +">{(id) => <LengthInput id={id} value={wall.doorRoHeight} onChange={set('doorRoHeight')} />}</Field>
+      </div>
+    </details>
   );
 }

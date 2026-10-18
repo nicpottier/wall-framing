@@ -163,11 +163,10 @@ describe('headers', () => {
     expect(frame(wall({ length: 300, exterior: false, openings: [opening({ x: 40, width: 100 })] })).openings[0]!.headPlies).toBe(1);
   });
 
-  it('uses scheduled beams by mark', () => {
+  it('uses the chosen header size', () => {
     const f = frame(wall({ openings: [opening({ header: '4x10' })] }));
-    expect(header(f).size).toBe('B4 4x10');
+    expect(header(f).size).toBe('4x10');
     expect(header(f).h).toBe(9.25);
-    expect(f.cutList.find((c) => c.role === 'header')!.notes.join(' ')).toMatch(/B4 per beam schedule/);
   });
 
   it('rips a filler when the space under the header is too short for cripples', () => {

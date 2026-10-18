@@ -265,7 +265,7 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
       issue('error', `${tag}: king stud runs into the end stud. Move the opening at least ${fmt(kingRight + T - (L - T))} to the left.`, spec.id);
     }
 
-    // Plan note 3: 4x8 unless the plan calls out a beam mark.
+    // Plan note 3: 4x8 unless the plan calls out a larger member.
     const header = headerType(spec.header === 'auto' ? TYPICAL_HEADER : spec.header);
     const name = headerName(header);
     const dropped = wall.headerMount === 'dropped';
@@ -545,7 +545,6 @@ function buildCutList(wall: WallSpec, members: Member[], openings: OpeningFrame[
     }
     if (g.role === 'header') {
       const h = openings.find((o) => headerName(o.header) === g.size)!.header;
-      if (h.mark) g.notes.push(`${h.mark} per beam schedule`);
       if (h.width < WALL_DEPTH) g.notes.push(`${toFraction(WALL_DEPTH - h.width)}" rigid foam to fill the wall`);
       if (wall.exterior && g.length > LONG_HEADER) g.notes.push('A35 clip each end (10/S4.1)');
     }

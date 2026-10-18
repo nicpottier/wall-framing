@@ -69,38 +69,6 @@ export function WallSettings({ wall, dispatch }: Props) {
   );
 }
 
-/** Wall-wide rules for sizing rough openings from window and door unit sizes. */
-export function RoughOpeningSettings({ wall, dispatch }: Props) {
-  const set = setter(dispatch);
-  const summary = `Head ${wall.windowHeadHeight || '—'}" · ${wall.headerMount === 'dropped' ? 'headers under plate' : 'headers on opening'} · window +${wall.windowRoWidth}/${wall.windowRoHeight} · door +${wall.doorRoWidth}/${wall.doorRoHeight}`;
-
-  return (
-    <Panel title="Rough openings" summary={summary} collapsible tone="openings">
-      <div className="fields">
-        <Field label="Window head height" hint="Floor to top of R.O. Windows can override it.">
-          {(id) => <LengthInput id={id} value={wall.windowHeadHeight} onChange={set('windowHeadHeight')} />}
-        </Field>
-        <Segmented label="Rough sill" value={wall.sillPlies} options={[['1', 'Single'], ['2', 'Double']]} onChange={set('sillPlies')} />
-        <Segmented
-          label="Headers"
-          value={wall.headerMount}
-          options={[['dropped', 'Under plate'], ['onJacks', 'On opening']]}
-          onChange={set('headerMount')}
-        />
-        <p className="field-note full">
-          Under plate: tight to the top plate with cripples down to a flat head plate (10/S4.1, typical per plan note 3).
-          On opening: header sits at the top of the opening.
-        </p>
-        <p className="field-group full">Added to the unit size</p>
-        <Field label="Window width +">{(id) => <LengthInput id={id} value={wall.windowRoWidth} onChange={set('windowRoWidth')} />}</Field>
-        <Field label="Window height +">{(id) => <LengthInput id={id} value={wall.windowRoHeight} onChange={set('windowRoHeight')} />}</Field>
-        <Field label="Door width +">{(id) => <LengthInput id={id} value={wall.doorRoWidth} onChange={set('doorRoWidth')} />}</Field>
-        <Field label="Door height +">{(id) => <LengthInput id={id} value={wall.doorRoHeight} onChange={set('doorRoHeight')} />}</Field>
-      </div>
-    </Panel>
-  );
-}
-
 const CORNERS = [
   ['none', 'No corner'],
   ['outside', 'Outside (runs past)'],

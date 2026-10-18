@@ -185,8 +185,8 @@ export function Checks({ issues }: { issues: Issue[] }) {
       )}
       <p className="fineprint">
         Headers follow the Buckley-Watanabe structural plans (Harezlak Engineering, Rev. 1, 05/22/26): 4x8 typical per
-        plan note 3, beams by mark per the beam schedule, and trimmers, head plates, A35 clips and MSTA24 straps per
-        10/S4.1. Pick the scheduled beam for any opening the plans call out by mark.
+        plan note 3, larger sizes from the beam schedule, and trimmers, head plates, A35 clips and MSTA24 straps per
+        10/S4.1. Pick the larger size for any opening the plans call out.
       </p>
     </section>
   );

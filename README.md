@@ -63,7 +63,7 @@ Left and right are always as seen **from inside** the building. Enter opening po
 
 ### Headers (Buckley-Watanabe structural plans, Harezlak Engineering, Rev. 1, 05/22/26)
 
-- **Types**: 4x8 is typical over all openings (S2.1/S2.2 plan note 3, U.O.N.). The header picker also lists the beam schedule: B1 3½×11⅞ LVL, B2 5½×11⅞ GL, B3 5¼×14 LVL, B4 4x10, B5 P/T 6x10, B6 3½×18 LVL. Auto uses 4x8; pick the mark the plans call out for a specific opening. Headers narrower than the 5½" wall get rigid foam to fill.
+- **Types**: 4x8 is typical over all openings (S2.1/S2.2 plan note 3, U.O.N.). The header picker also lists the larger sizes from the beam schedule: 4x10, P/T 6x10, 3½×11⅞ LVL, 5½×11⅞ GL, 5¼×14 LVL and 3½×18 LVL. Auto uses 4x8; pick the larger size where the plans call one out. Headers narrower than the 5½" wall get rigid foam to fill.
 - **Under plate** (default, 10/S4.1): the header sits tight under the top plates. A flat head plate defines the top of the rough opening, doubled at exterior openings over 8'-0", with cripples (2" or more) or a ripped filler between it and the header. If a deep header only fits by rising into the double top plate, the lower plate is cut and an MSTA24 strap is noted.
 - **On opening**: the header sits on the jacks at the top of the rough opening, with cripples or filler up to the plates.
 - **Trimmers**: (2) per side at headers over 6'-0" long, otherwise (1) (10/S4.1). Exterior headers over 6'-0" get A35 clips.

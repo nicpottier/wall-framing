@@ -3,7 +3,7 @@ import { computeFraming } from './lib/framing';
 import { makeFormatter } from './lib/units';
 import { loadWall, saveWall, toWallSpec, wallReducer } from './state/wall';
 import { Elevation } from './components/Elevation';
-import { RoughOpeningSettings, SheathingSettings, WallSettings } from './components/WallSettings';
+import { SheathingSettings, WallSettings } from './components/WallSettings';
 import { OpeningsEditor } from './components/OpeningsEditor';
 import { Checks, CutList, Legend, TitleBlock } from './components/Report';
 import { BrandMark } from './components/BrandMark';
@@ -58,7 +58,6 @@ export default function App() {
         <aside className="rail">
           <WallSettings wall={wall} dispatch={dispatch} />
           <OpeningsEditor wall={wall} errorIds={errorIds} fmt={fmt} dispatch={dispatch} />
-          <RoughOpeningSettings wall={wall} dispatch={dispatch} />
           <SheathingSettings wall={wall} dispatch={dispatch} />
         </aside>
 
