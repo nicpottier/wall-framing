@@ -1,6 +1,6 @@
 import type { Dispatch } from 'react';
 import type { WallAction, WallInput, WallSettingKey } from '../state/wall';
-import { Field, LengthInput, Segmented } from './controls';
+import { Field, LengthInput, Panel, Segmented } from './controls';
 
 const HEIGHT_PRESETS = [
   ["8'", '97 1/8'],
@@ -10,36 +10,45 @@ const HEIGHT_PRESETS = [
 
 const SPACINGS = ['12', '16', '19.2', '24'] as const;
 
-export function WallSettings({ wall, dispatch }: { wall: WallInput; dispatch: Dispatch<WallAction> }) {
-  const set = (key: WallSettingKey) => (value: string) => dispatch({ type: 'set', key, value });
+interface Props {
+  wall: WallInput;
+  dispatch: Dispatch<WallAction>;
+}
+
+const setter = (dispatch: Dispatch<WallAction>) => (key: WallSettingKey) => (value: string) =>
+  dispatch({ type: 'set', key, value });
+
+export function WallSettings({ wall, dispatch }: Props) {
+  const set = setter(dispatch);
 
   return (
-    <section className="panel" aria-labelledby="wall-h">
-      <div className="panel-head">
-        <h2 className="eyebrow" id="wall-h">
-          Wall
-        </h2>
-      </div>
+    <Panel title="Wall">
       <div className="fields">
-        <Field label="Wall name" full>
+        <Field label="Name" full>
           {(id) => (
             <input id={id} type="text" className="plain" autoComplete="off" value={wall.name} onChange={(e) => set('name')(e.target.value)} />
           )}
         </Field>
-        <Field label="Wall length" hint={`e.g. 20' or 240 or 12'-6 1/2"`}>
+        <Field label="Length" hint={`20' · 240 · 12'-6 1/2"`}>
           {(id) => <LengthInput id={id} value={wall.length} onChange={set('length')} />}
         </Field>
-        <Field label="Wall height" hint="Floor to top of top plate">
-          {(id) => <LengthInput id={id} value={wall.height} onChange={set('height')} />}
-        </Field>
-        <div className="field full">
-          <div className="chips" aria-label="Common wall heights">
-            {HEIGHT_PRESETS.map(([name, h]) => (
-              <button key={h} className="chip" type="button" onClick={() => set('height')(h)}>
-                {name} · {h}"
-              </button>
-            ))}
-          </div>
+        <div className="field">
+          <label htmlFor="wall-height">Height</label>
+          <LengthInput id="wall-height" value={wall.height} onChange={set('height')} />
+          <span className="chips" aria-label="Common wall heights to the top of the top plate">
+              {HEIGHT_PRESETS.map(([name, h]) => (
+                <button
+                  key={h}
+                  className="chip"
+                  type="button"
+                  aria-pressed={wall.height === h}
+                  title={`${name} wall: ${h}" to the top of the top plate`}
+                  onClick={() => set('height')(h)}
+                >
+                  {name}
+                </button>
+              ))}
+          </span>
         </div>
         <Field label="Stud spacing">
           {(id) => (
@@ -54,44 +63,41 @@ export function WallSettings({ wall, dispatch }: { wall: WallInput; dispatch: Di
         </Field>
         <Segmented label="Layout from" value={wall.layoutFrom} options={[['left', 'Left'], ['right', 'Right']]} onChange={set('layoutFrom')} />
         <Segmented label="Top plate" value={wall.topPlates} options={[['1', 'Single'], ['2', 'Double']]} onChange={set('topPlates')} />
-        <Segmented label="Header plies" value={wall.headerPlies} options={[['2', '2 + foam'], ['3', '3']]} onChange={set('headerPlies')} />
-        <Segmented label="Rough sill" value={wall.sillPlies} options={[['1', 'Single'], ['2', 'Double']]} onChange={set('sillPlies')} />
-        <Segmented label="Show lengths in" value={wall.units} options={[['in', 'Inches'], ['ftin', 'Ft-in']]} onChange={set('units')} />
+        <Segmented label="Exterior wall" value={wall.exterior} options={[['yes', 'Yes'], ['no', 'No']]} onChange={set('exterior')} />
       </div>
-    </section>
+    </Panel>
   );
 }
 
 /** Wall-wide rules for sizing rough openings from window and door unit sizes. */
-export function RoughOpeningSettings({ wall, dispatch }: { wall: WallInput; dispatch: Dispatch<WallAction> }) {
-  const set = (key: WallSettingKey) => (value: string) => dispatch({ type: 'set', key, value });
+export function RoughOpeningSettings({ wall, dispatch }: Props) {
+  const set = setter(dispatch);
+  const summary = `Head ${wall.windowHeadHeight || '—'}" · ${wall.headerMount === 'dropped' ? 'headers under plate' : 'headers on opening'} · window +${wall.windowRoWidth}/${wall.windowRoHeight} · door +${wall.doorRoWidth}/${wall.doorRoHeight}`;
 
   return (
-    <section className="panel" aria-labelledby="ro-h">
-      <div className="panel-head">
-        <h2 className="eyebrow" id="ro-h">
-          Rough openings
-        </h2>
-      </div>
+    <Panel title="Rough openings" summary={summary} collapsible>
       <div className="fields">
-        <Field label="Window head height" hint="Floor to top of R.O. Each window can override it." full>
+        <Field label="Window head height" hint="Floor to top of R.O. Windows can override it.">
           {(id) => <LengthInput id={id} value={wall.windowHeadHeight} onChange={set('windowHeadHeight')} />}
         </Field>
-        <p className="field-group full">Added to the unit size to get the rough opening</p>
-        <Field label="Window, width +">
-          {(id) => <LengthInput id={id} value={wall.windowRoWidth} onChange={set('windowRoWidth')} />}
-        </Field>
-        <Field label="Window, height +">
-          {(id) => <LengthInput id={id} value={wall.windowRoHeight} onChange={set('windowRoHeight')} />}
-        </Field>
-        <Field label="Door, width +">
-          {(id) => <LengthInput id={id} value={wall.doorRoWidth} onChange={set('doorRoWidth')} />}
-        </Field>
-        <Field label="Door, height +">
-          {(id) => <LengthInput id={id} value={wall.doorRoHeight} onChange={set('doorRoHeight')} />}
-        </Field>
+        <Segmented label="Rough sill" value={wall.sillPlies} options={[['1', 'Single'], ['2', 'Double']]} onChange={set('sillPlies')} />
+        <Segmented
+          label="Headers"
+          value={wall.headerMount}
+          options={[['dropped', 'Under plate'], ['onJacks', 'On opening']]}
+          onChange={set('headerMount')}
+        />
+        <p className="field-note full">
+          Under plate: tight to the top plate with cripples down to a flat head plate (10/S4.1, typical per plan note 3).
+          On opening: header sits at the top of the opening.
+        </p>
+        <p className="field-group full">Added to the unit size</p>
+        <Field label="Window width +">{(id) => <LengthInput id={id} value={wall.windowRoWidth} onChange={set('windowRoWidth')} />}</Field>
+        <Field label="Window height +">{(id) => <LengthInput id={id} value={wall.windowRoHeight} onChange={set('windowRoHeight')} />}</Field>
+        <Field label="Door width +">{(id) => <LengthInput id={id} value={wall.doorRoWidth} onChange={set('doorRoWidth')} />}</Field>
+        <Field label="Door height +">{(id) => <LengthInput id={id} value={wall.doorRoHeight} onChange={set('doorRoHeight')} />}</Field>
       </div>
-    </section>
+    </Panel>
   );
 }
 
@@ -102,8 +108,8 @@ const CORNERS = [
 ] as const;
 
 /** 4x8 sheathing: panel direction, thickness, corner offsets and seam framing. */
-export function SheathingSettings({ wall, dispatch }: { wall: WallInput; dispatch: Dispatch<WallAction> }) {
-  const set = (key: WallSettingKey) => (value: string) => dispatch({ type: 'set', key, value });
+export function SheathingSettings({ wall, dispatch }: Props) {
+  const set = setter(dispatch);
   const corner = (key: 'cornerLeft' | 'cornerRight', label: string) => (
     <Field label={label}>
       {(id) => (
@@ -117,14 +123,15 @@ export function SheathingSettings({ wall, dispatch }: { wall: WallInput; dispatc
       )}
     </Field>
   );
+  const summary = [
+    wall.sheathingOrientation === 'vertical' ? 'Vertical' : 'Horizontal',
+    `${wall.sheathingThickness}" thick`,
+    `starts ${wall.sheathingStart}"`,
+    `${wall.seamStuds} seam studs`,
+  ].join(' · ');
 
   return (
-    <section className="panel" aria-labelledby="sh-h">
-      <div className="panel-head">
-        <h2 className="eyebrow" id="sh-h">
-          Sheathing · 4x8
-        </h2>
-      </div>
+    <Panel title="Sheathing · 4x8" summary={summary} collapsible>
       <div className="fields">
         <Segmented
           label="Panels run"
@@ -132,22 +139,21 @@ export function SheathingSettings({ wall, dispatch }: { wall: WallInput; dispatc
           options={[['vertical', 'Vertical'], ['horizontal', 'Horizontal']]}
           onChange={set('sheathingOrientation')}
         />
-        <Field label="Thickness" hint={`ZIP R-9 is about 2"`}>
+        <Field label="Thickness" hint={`ZIP R-9 ≈ 2"`}>
           {(id) => <LengthInput id={id} value={wall.sheathingThickness} onChange={set('sheathingThickness')} />}
         </Field>
-        <Field label="Start height" hint="Floor to bottom of the first full panel. A strip below covers the wall bottom and rim." full>
+        <Field label="Start height" hint="Floor to bottom of first full panel">
           {(id) => <LengthInput id={id} value={wall.sheathingStart} onChange={set('sheathingStart')} />}
         </Field>
+        <Segmented label="Seam studs" value={wall.seamStuds} options={[['single', 'Single'], ['double', 'Double']]} onChange={set('seamStuds')} />
         {corner('cornerLeft', 'Left end corner')}
         {corner('cornerRight', 'Right end corner')}
-        <p className="field-group full">
-          Left and right are as seen from inside. Layout and sheathing are pulled from the {wall.layoutFrom} end. An outside corner adds the sheathing thickness; an
-          inside corner adds the wall depth plus the sheathing.
+        <p className="field-note full">
+          Seen from inside. Outside adds the sheathing thickness; inside adds the wall depth plus sheathing. Layout and
+          sheathing start at the {wall.layoutFrom} end.
         </p>
-        <Segmented label="Seam studs" value={wall.seamStuds} options={[['single', 'Single'], ['double', 'Double']]} onChange={set('seamStuds')} />
         <Segmented label="Block horizontal seams" value={wall.blockSeams} options={[['yes', 'Yes'], ['no', 'No']]} onChange={set('blockSeams')} />
-        <Segmented label="Show in drawing" value={wall.showSheathing} options={[['on', 'On'], ['off', 'Off']]} onChange={set('showSheathing')} />
       </div>
-    </section>
+    </Panel>
   );
 }

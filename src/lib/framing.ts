@@ -1,4 +1,14 @@
-import { DEPTH, HEADER_SIZES, PRECUTS, T, suggestedHeader, type HeaderSize, type LumberSize } from './lumber';
+import {
+  DEPTH,
+  PRECUTS,
+  T,
+  TYPICAL_HEADER,
+  WALL_DEPTH,
+  headerName,
+  headerType,
+  type HeaderType,
+  type HeaderTypeId,
+} from './lumber';
 import { sheathingLayout, type SheathingLayout, type SheathingSpec } from './sheathing';
 import { round16, toFraction, type Formatter } from './units';
 
@@ -19,7 +29,7 @@ export interface OpeningSpec {
   height: number;
   /** Floor to bottom of rough opening (windows only; doors are 0). */
   sill: number;
-  header: HeaderSize | 'auto';
+  header: HeaderTypeId | 'auto';
   jacksPerSide: 'auto' | 1 | 2;
   /** Size of the window or door unit itself, for labeling. */
   unit?: { width: number; height: number };
@@ -34,7 +44,13 @@ export interface WallSpec {
   spacing: number;
   layoutFrom: LayoutFrom;
   topPlates: 1 | 2;
-  headerPlies: 2 | 3;
+  /**
+   * dropped: header tight under the top plates, cripples down to a flat head plate at the top of
+   * the rough opening (10/S4.1). onJacks: header sits on the jacks at the top of the opening.
+   */
+  headerMount: 'dropped' | 'onJacks';
+  /** Exterior walls get doubled head plates on long openings and A35 clips on long headers. */
+  exterior: boolean;
   sillPlies: 1 | 2;
   sheathing: SheathingSpec;
   openings: OpeningSpec[];
@@ -50,6 +66,7 @@ export type Role =
   | 'king'
   | 'jack'
   | 'header'
+  | 'headPlate'
   | 'sill'
   | 'crippleTop'
   | 'crippleBottom'
@@ -64,10 +81,11 @@ export const ROLES: Record<Role, { name: string; order: number }> = {
   king: { name: 'King stud', order: 4 },
   jack: { name: 'Jack stud (trimmer)', order: 5 },
   header: { name: 'Header', order: 6 },
+  headPlate: { name: 'Head plate', order: 6.5 },
   sill: { name: 'Rough sill', order: 7 },
-  crippleTop: { name: 'Cripple, above header', order: 8 },
+  crippleTop: { name: 'Cripple, above opening', order: 8 },
   crippleBottom: { name: 'Cripple, below sill', order: 9 },
-  filler: { name: 'Header filler', order: 10 },
+  filler: { name: 'Filler, above opening', order: 10 },
   blocking: { name: 'Seam blocking', order: 11 },
 };
 
@@ -79,7 +97,8 @@ export interface Member {
   z: number;
   w: number;
   h: number;
-  size: LumberSize;
+  /** Lumber size, or the header's name. */
+  size: string;
   /** Cut length of the piece. */
   length: number;
   /** Cut-list group this piece belongs to. */
@@ -99,17 +118,26 @@ export interface OpeningFrame {
   jacksPerSide: number;
   roBottom: number;
   roTop: number;
-  headerSize: HeaderSize;
+  header: HeaderType;
   headerX: number;
   headerLength: number;
   headerTop: number;
+  headerBottom: number;
+  /** Flat plates under a dropped header (0 when the header sits on the jacks). */
+  headPlies: number;
+  /** Header raised into the lower top plate, which is cut around it. */
+  topPlateCut?: [number, number];
   kingLeft: number;
   kingRight: number;
   /** Horizontal extent of all framing for the opening (outside of king to outside of king). */
   zoneStart: number;
   zoneEnd: number;
-  /** Header top to underside of top plate. */
+  /** Space filled by cripples or filler above the opening, bottom and top. */
+  crippleZone: [number, number];
+  /** Height of that space. */
   gapAbove: number;
+  /** Horizontal extent of the cripples or filler. */
+  crippleSpan: [number, number];
   /** Cripple length below a window sill. */
   crippleBelow?: number;
   /** Portion of the bottom plate removed at a door. */
@@ -127,7 +155,7 @@ export interface Issue {
 export interface CutGroup {
   key: string;
   role: Role;
-  size: LumberSize;
+  size: string;
   length: number;
   qty: number;
   notes: string[];
@@ -161,12 +189,14 @@ export interface FramingFailure {
 
 const EPS = 1e-6;
 
-/** Smallest gap above a header that gets cripples; anything shorter becomes a ripped filler. */
-export const MIN_CRIPPLE = 3;
+/** Smallest gap that gets cripples; anything shorter becomes a ripped filler. */
+export const MIN_CRIPPLE = 2;
 /** Bays narrower than this next to a king stud get flagged. */
 export const TIGHT_BAY = 2;
-/** Openings wider than this get doubled jacks on Auto. */
-export const DOUBLE_JACK_SPAN = 72;
+/** 10/S4.1: headers over 6'-0" get (2) trimmers each side, and A35 clips when exterior. */
+export const LONG_HEADER = 72;
+/** 10/S4.1: exterior openings over 8'-0" get a doubled head plate. */
+export const LONG_HEAD_PLATE = 96;
 
 export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | FramingFailure {
   const { length: L, height: H, spacing, topPlates } = wall;
@@ -182,7 +212,7 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
   const members: Member[] = [];
   const issues: Issue[] = [];
   let seq = 0;
-  const add = (m: Omit<Member, 'id' | 'group' | 'size'> & { size?: LumberSize }) => {
+  const add = (m: Omit<Member, 'id' | 'group' | 'size'> & { size?: string }) => {
     const size = m.size ?? '2x6';
     const member: Member = { ...m, size, id: `m${seq++}`, group: `${m.role}|${size}|${round16(m.length)}` };
     members.push(member);
@@ -206,10 +236,18 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
   const centersWithin = (lo: number, hi: number) =>
     layout.map((l) => l.center - T / 2).filter((x) => x >= lo - EPS && x + T <= hi + EPS);
 
+  // Cripples between two flat members: one at each end plus one on each layout mark between.
+  const crippleXs = (lo: number, hi: number) => {
+    const xs = [lo, hi - T];
+    for (const x of centersWithin(lo, hi)) if (xs.every((e) => Math.abs(e - x) >= T - EPS)) xs.push(x);
+    return xs.sort((a, b) => a - b);
+  };
+
   const openings: OpeningFrame[] = [];
   for (const spec of wall.openings) {
     const tag = spec.label || '?';
-    const n = spec.jacksPerSide === 'auto' ? (spec.width > DOUBLE_JACK_SPAN ? 2 : 1) : spec.jacksPerSide;
+    // 10/S4.1: (2) trimmer studs at headers over 6'-0" long.
+    const n = spec.jacksPerSide === 'auto' ? (spec.width + 2 * T > LONG_HEADER ? 2 : 1) : spec.jacksPerSide;
     const sill = spec.type === 'window' ? spec.sill : 0;
     const roTop = sill + spec.height;
     const headerX = spec.x - n * T;
@@ -227,46 +265,57 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
       issue('error', `${tag}: king stud runs into the end stud. Move the opening at least ${fmt(kingRight + T - (L - T))} to the left.`, spec.id);
     }
 
-    // Header size: honor an explicit choice, otherwise use the rule of thumb and step down if it can't fit.
-    const fits = (s: HeaderSize) => roTop + DEPTH[s] <= plateBottom + EPS;
-    let headerSize: HeaderSize;
-    if (spec.header === 'auto') {
-      const pref = suggestedHeader(spec.width);
-      headerSize = pref;
-      if (!fits(pref)) {
-        const smaller = HEADER_SIZES.slice(0, HEADER_SIZES.indexOf(pref)).reverse().find(fits);
-        if (smaller) {
-          headerSize = smaller;
-          issue('warning', `${tag}: header reduced to ${smaller} to fit under the top plate. Confirm it can carry a ${fmt(spec.width)} span.`, spec.id);
-        } else {
-          headerSize = '2x6';
-          hasError = true;
-          issue('error', `${tag}: no header fits. The rough opening is ${fmt(roTop + DEPTH['2x6'] - plateBottom)} too tall for even a 2x6 header.`, spec.id);
-        }
+    // Plan note 3: 4x8 unless the plan calls out a beam mark.
+    const header = headerType(spec.header === 'auto' ? TYPICAL_HEADER : spec.header);
+    const name = headerName(header);
+    const dropped = wall.headerMount === 'dropped';
+    let headerTop: number;
+    let headPlies = 0;
+    let topPlateCut: [number, number] | undefined;
+    if (dropped) {
+      // Tight under the top plates, with a flat plate at the head of the opening (10/S4.1).
+      headPlies = wall.exterior && spec.width > LONG_HEAD_PLATE ? 2 : 1;
+      const headPlateTop = roTop + headPlies * T;
+      headerTop = plateBottom;
+      if (headerTop - header.depth < headPlateTop - EPS && topPlates === 2 && headerTop + T - header.depth >= headPlateTop - EPS) {
+        headerTop += T;
+        topPlateCut = [headerX, headerX + headerLength];
+        issue('note', `${tag}: the ${name} header rises into the double top plate. Cut the lower plate and strap across it with MSTA24 (10/S4.1).`, spec.id);
+      }
+      if (headerTop - header.depth < headPlateTop - EPS) {
+        hasError = true;
+        issue('error', `${tag}: a ${name} header doesn't fit above a ${fmt(roTop)} head; it is ${fmt(headPlateTop - (headerTop - header.depth))} short. Lower the head or pick a shallower header.`, spec.id);
       }
     } else {
-      headerSize = spec.header;
-      if (!fits(headerSize)) {
+      headerTop = roTop + header.depth;
+      if (headerTop > plateBottom + EPS) {
         hasError = true;
-        issue('error', `${tag}: a ${headerSize} header runs ${fmt(roTop + DEPTH[headerSize] - plateBottom)} into the top plate. Lower the opening or pick a smaller header.`, spec.id);
+        issue('error', `${tag}: a ${name} header runs ${fmt(headerTop - plateBottom)} into the top plate. Lower the opening or pick a shallower header.`, spec.id);
       }
     }
-    const headerTop = roTop + DEPTH[headerSize];
+    const headerBottom = headerTop - header.depth;
+    const crippleZone: [number, number] = dropped ? [roTop + headPlies * T, headerBottom] : [headerTop, plateBottom];
+    const crippleSpan: [number, number] = dropped ? [spec.x, spec.x + spec.width] : [headerX, headerX + headerLength];
 
     const frame: OpeningFrame = {
       spec,
       jacksPerSide: n,
       roBottom: sill,
       roTop,
-      headerSize,
+      header,
       headerX,
       headerLength,
       headerTop,
+      headerBottom,
+      headPlies,
+      topPlateCut,
       kingLeft,
       kingRight,
       zoneStart: kingLeft,
       zoneEnd: kingRight + T,
-      gapAbove: plateBottom - headerTop,
+      crippleZone,
+      gapAbove: crippleZone[1] - crippleZone[0],
+      crippleSpan,
       hasError,
     };
     openings.push(frame);
@@ -274,21 +323,25 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
     const oid = spec.id;
     add({ role: 'king', x: kingLeft, z: T, w: T, h: studLength, length: studLength, openingId: oid });
     add({ role: 'king', x: kingRight, z: T, w: T, h: studLength, length: studLength, openingId: oid });
-    const jackLength = roTop - T;
+    const jackLength = headerBottom - T;
     for (let i = 0; i < n; i++) {
       add({ role: 'jack', x: spec.x - (i + 1) * T, z: T, w: T, h: jackLength, length: jackLength, openingId: oid });
       add({ role: 'jack', x: spec.x + spec.width + i * T, z: T, w: T, h: jackLength, length: jackLength, openingId: oid });
     }
-    add({ role: 'header', x: headerX, z: roTop, w: headerLength, h: DEPTH[headerSize], size: headerSize, length: headerLength, openingId: oid });
+    add({ role: 'header', x: headerX, z: headerBottom, w: headerLength, h: header.depth, size: name, length: headerLength, openingId: oid });
+    for (let p = 0; p < headPlies; p++) {
+      add({ role: 'headPlate', x: spec.x, z: roTop + p * T, w: spec.width, h: T, length: spec.width, openingId: oid });
+    }
 
-    // Above the header: cripples on layout, or a filler strip when the gap is too short for cripples.
+    // Between the opening and the header (dropped) or the header and the plates: cripples, or a filler.
     const gap = frame.gapAbove;
+    const [x0, x1] = crippleSpan;
     if (gap >= MIN_CRIPPLE - EPS) {
-      for (const x of centersWithin(headerX, headerX + headerLength)) {
-        add({ role: 'crippleTop', x, z: headerTop, w: T, h: gap, length: gap, openingId: oid });
+      for (const x of dropped ? crippleXs(x0, x1) : centersWithin(x0, x1)) {
+        add({ role: 'crippleTop', x, z: crippleZone[0], w: T, h: gap, length: gap, openingId: oid });
       }
     } else if (gap > 1 / 32) {
-      add({ role: 'filler', x: headerX, z: headerTop, w: headerLength, h: gap, length: headerLength, fillHeight: gap, openingId: oid });
+      add({ role: 'filler', x: x0, z: crippleZone[0], w: x1 - x0, h: gap, length: x1 - x0, fillHeight: gap, openingId: oid });
     }
 
     if (spec.type === 'window') {
@@ -305,13 +358,9 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
       }
       if (cl > 1 / 32) {
         // End cripples carry the sill ends; layout cripples fill between.
-        const xs = [spec.x, spec.x + spec.width - T];
-        for (const x of centersWithin(spec.x, spec.x + spec.width)) {
-          if (xs.every((e) => Math.abs(e - x) >= T - EPS)) xs.push(x);
+        for (const x of crippleXs(spec.x, spec.x + spec.width)) {
+          add({ role: 'crippleBottom', x, z: T, w: T, h: cl, length: cl, openingId: oid });
         }
-        xs.sort((a, b) => a - b).forEach((x) =>
-          add({ role: 'crippleBottom', x, z: T, w: T, h: cl, length: cl, openingId: oid }),
-        );
       }
     } else {
       frame.plateCut = [spec.x, spec.x + spec.width];
@@ -369,7 +418,7 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
   return { ok: true, wall, plateBottom, studLength, members, openings, layout, sheathing: sheet, issues, cutList, stats };
 }
 
-type AddMember = (m: Omit<Member, 'id' | 'group' | 'size'> & { size?: LumberSize }) => Member;
+type AddMember = (m: Omit<Member, 'id' | 'group' | 'size'> & { size?: string }) => Member;
 type AddIssue = (level: IssueLevel, message: string, openingId?: string) => void;
 
 const FULL_HEIGHT: Role[] = ['stud', 'seamStud', 'king'];
@@ -456,7 +505,7 @@ function placeSeamBlocking(
       const x1 = posts[i]!.x;
       if (x1 - x0 < 0.25) continue;
       const hitsFlat = members.some(
-        (m) => (m.role === 'header' || m.role === 'sill' || m.role === 'filler') && overlapsX(m, x0, x1) && m.z < bz + BLOCK_FACE - EPS && m.z + m.h > bz + EPS,
+        (m) => (m.role === 'header' || m.role === 'headPlate' || m.role === 'sill' || m.role === 'filler') && overlapsX(m, x0, x1) && m.z < bz + BLOCK_FACE - EPS && m.z + m.h > bz + EPS,
       );
       const inOpening = openings.some(
         (o) => x0 < o.spec.x + o.spec.width - EPS && x1 > o.spec.x + EPS && bz < o.roTop - EPS && bz + BLOCK_FACE > o.roBottom + EPS,
@@ -475,7 +524,7 @@ function buildCutList(wall: WallSpec, members: Member[], openings: OpeningFrame[
       g = { key: m.group, role: m.role, size: m.size, length: round16(m.length), qty: 0, notes: [] };
       groups.set(m.group, g);
     }
-    g.qty += m.role === 'header' ? wall.headerPlies : 1;
+    g.qty += 1;
     if (m.role === 'filler' && m.fillHeight != null && !g.notes.length) {
       g.notes.push(`Rip to ${toFraction(m.fillHeight)}" tall from 2x stock or plywood`);
     }
@@ -486,13 +535,21 @@ function buildCutList(wall: WallSpec, members: Member[], openings: OpeningFrame[
     if (g.role === 'plate' || g.role === 'topPlate') {
       if (g.length > 192) g.notes.push("Longer than 16' stock; splice over a stud");
       if (g.role === 'topPlate' && wall.topPlates === 2) g.notes.push('Offset top plate splices at least 24"');
+      const cut = openings.filter((o) => o.topPlateCut);
+      if (g.role === 'topPlate' && cut.length) {
+        g.notes.push(`Lower plate cut at ${cut.map((o) => o.spec.label).join(', ')} header; MSTA24 across`);
+      }
       if (g.role === 'plate' && doors.length) {
         g.notes.push(`Cut out at ${doors.map((d) => d.spec.label).join(', ')} after the wall is stood`);
       }
     }
     if (g.role === 'header') {
-      g.notes.push(wall.headerPlies === 2 ? 'Two plies + 2 1/2" rigid foam core = 5 1/2"' : 'Three plies + 1" rigid foam = 5 1/2"');
+      const h = openings.find((o) => headerName(o.header) === g.size)!.header;
+      if (h.mark) g.notes.push(`${h.mark} per beam schedule`);
+      if (h.width < WALL_DEPTH) g.notes.push(`${toFraction(WALL_DEPTH - h.width)}" rigid foam to fill the wall`);
+      if (wall.exterior && g.length > LONG_HEADER) g.notes.push('A35 clip each end (10/S4.1)');
     }
+    if (g.role === 'headPlate') g.notes.push(`Flat under the header; doubled at exterior openings over 8'-0" (10/S4.1)`);
     if (g.role === 'seamStud') {
       g.notes.push(wall.sheathing.seamStuds === 'double' ? 'Pairs straddle vertical sheathing seams' : 'Centered under vertical sheathing seams');
     }

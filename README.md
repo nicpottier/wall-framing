@@ -22,7 +22,7 @@ src/
   lib/            Pure TypeScript, no React. Everything here is unit-tested.
     units.ts      Tape-measure parsing ("8'-1 1/8\"", "92 5/8") and 1/16" formatting
     sheathing.ts  4x8 panel seams and corner offsets
-    lumber.ts     Lumber constants (actual sizes), header rule of thumb, precut lengths
+    lumber.ts     Lumber constants, the project's header types (from the structural plans), precut lengths
     framing.ts    The framing engine: WallSpec in -> members, openings, issues, cut list out
   state/
     wall.ts       Form state as typed text, rough-opening resolution, reducer, parsing to WallSpec, localStorage
@@ -42,11 +42,9 @@ The data flow is one way: **form text → `toWallSpec` → `computeFraming` → 
 - Window sills come from the head height (floor to top of rough opening). It is set once for the wall and can be overridden per window. Sill = head height − rough opening height.
 - Each opening is located from the left or right end of the wall, to the near edge of its rough opening.
 - Layout marks put stud centers on the spacing, measured from the chosen end, so sheathing edges land on studs. End studs sit flush at both ends.
-- Each opening gets a king stud on each side, jack studs (trimmers) under the header, and a header sized by span. Auto picks the size; openings wider than 72" get double jacks.
-- Above the header, a gap of 3" or more gets cripples on layout. A smaller gap gets a ripped filler strip.
+- Each opening gets a king stud on each side and jack studs (trimmers) under the header.
 - Windows get a rough sill (single or double) on cripples: one at each end plus one on each layout mark.
 - At doors, the bottom plate is cut out between the jacks after the wall is stood.
-- Headers are 2 plies with a rigid-foam core, or 3 plies with 1" foam, to fill the 5 1/2" wall.
 
 ### Views
 
@@ -62,13 +60,18 @@ Left and right are always as seen **from inside** the building. Enter opening po
 - **Seam studs**: *double* puts two studs straddling each vertical seam (replacing the layout stud); *single* makes sure one stud is centered under it. Seams that fall inside an opening's framing with nothing behind them are flagged.
 - **Start height** is the bottom of the first full panel row; horizontal seams repeat every panel height above it. With blocking on, a 2x4 on the flat is centered behind each seam, giving 1 3/4" of nailing to each panel edge, in every bay, skipping rough openings, headers and sills.
 
-Auto header sizes are a rule of thumb, not engineering. Check them against IRC Table R602.7 or an engineer's schedule.
+### Headers (Buckley-Watanabe structural plans, Harezlak Engineering, Rev. 1, 05/22/26)
+
+- **Types**: 4x8 is typical over all openings (S2.1/S2.2 plan note 3, U.O.N.). The header picker also lists the beam schedule: B1 3½×11⅞ LVL, B2 5½×11⅞ GL, B3 5¼×14 LVL, B4 4x10, B5 P/T 6x10, B6 3½×18 LVL. Auto uses 4x8; pick the mark the plans call out for a specific opening. Headers narrower than the 5½" wall get rigid foam to fill.
+- **Under plate** (default, 10/S4.1): the header sits tight under the top plates. A flat head plate defines the top of the rough opening, doubled at exterior openings over 8'-0", with cripples (2" or more) or a ripped filler between it and the header. If a deep header only fits by rising into the double top plate, the lower plate is cut and an MSTA24 strap is noted.
+- **On opening**: the header sits on the jacks at the top of the rough opening, with cripples or filler up to the plates.
+- **Trimmers**: (2) per side at headers over 6'-0" long, otherwise (1) (10/S4.1). Exterior headers over 6'-0" get A35 clips.
 
 ## Ideas for next steps
 
 - Corner and T-intersection framing at wall ends (California corners, ladder blocking)
 - Fire blocking, mid-height blocking, and sheathing layout overlay
 - Multiple walls per project with a combined lumber order (stock-length optimization)
-- Point loads / engineered headers (LVL), load-based header sizing
+- Point loads and posts ((3) studs min. under beam ends per plan note 4), stud wall type A (1¾×5½ LSL @ 12")
 - Plate layout marking sheet and printable / PDF export
 - Undo/redo, keyboard nudge for openings, metric units

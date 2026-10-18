@@ -1,4 +1,4 @@
-import type { HeaderSize } from '../lib/lumber';
+import { isHeaderTypeId, type HeaderTypeId } from '../lib/lumber';
 import type { Issue, LayoutFrom, OpeningSpec, OpeningType, WallSpec } from '../lib/framing';
 import type { CornerType, PanelOrientation } from '../lib/sheathing';
 import { parseLength, toFraction, type Units } from '../lib/units';
@@ -19,7 +19,7 @@ export interface OpeningInput {
   height: string;
   /** Windows only. Blank uses the wall's window head height. */
   headHeight: string;
-  header: HeaderSize | 'auto';
+  header: HeaderTypeId | 'auto';
   jacksPerSide: 'auto' | '1' | '2';
 }
 
@@ -30,7 +30,8 @@ export interface WallInput {
   spacing: string;
   layoutFrom: LayoutFrom;
   topPlates: '1' | '2';
-  headerPlies: '2' | '3';
+  headerMount: 'dropped' | 'onJacks';
+  exterior: 'yes' | 'no';
   sillPlies: '1' | '2';
   units: Units;
   /** Floor to the top of window rough openings. */
@@ -64,7 +65,8 @@ export const EXAMPLE_WALL: WallInput = {
   spacing: '16',
   layoutFrom: 'left',
   topPlates: '2',
-  headerPlies: '2',
+  headerMount: 'dropped',
+  exterior: 'yes',
   sillPlies: '1',
   units: 'in',
   windowHeadHeight: '82 1/2',
@@ -245,7 +247,7 @@ export function toWallSpec(input: WallInput): ParsedWall {
       width: r.roWidth,
       height: r.roHeight,
       sill: r.sill,
-      header: o.header,
+      header: isHeaderTypeId(o.header) ? o.header : 'auto',
       jacksPerSide: o.jacksPerSide === 'auto' ? 'auto' : (Number(o.jacksPerSide) as 1 | 2),
       unit: { width: r.unitWidth, height: r.unitHeight },
     });
@@ -257,7 +259,8 @@ export function toWallSpec(input: WallInput): ParsedWall {
       spacing: parseFloat(input.spacing),
       layoutFrom: input.layoutFrom,
       topPlates: input.topPlates === '1' ? 1 : 2,
-      headerPlies: input.headerPlies === '3' ? 3 : 2,
+      headerMount: input.headerMount === 'onJacks' ? 'onJacks' : 'dropped',
+      exterior: input.exterior !== 'no',
       sillPlies: input.sillPlies === '2' ? 2 : 1,
       sheathing: {
         orientation: input.sheathingOrientation,
@@ -283,7 +286,11 @@ export function loadWall(): WallInput {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<WallInput>;
-      if (Array.isArray(parsed.openings)) return { ...structuredClone(EXAMPLE_WALL), ...parsed } as WallInput;
+      if (Array.isArray(parsed.openings)) {
+        // Header choices from before the plan's header list fall back to Auto.
+        const openings = parsed.openings.map((o) => ({ ...o, header: isHeaderTypeId(o.header) ? o.header : 'auto' }));
+        return { ...structuredClone(EXAMPLE_WALL), ...parsed, openings } as WallInput;
+      }
     }
   } catch {
     // storage unavailable or corrupt; fall through to the example

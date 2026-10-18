@@ -40,17 +40,26 @@ export default function App() {
             <div className="brand-sub">2x6 framing · 1 1/2" × 5 1/2" actual</div>
           </div>
         </div>
-        <button className="btn" type="button" onClick={() => dispatch({ type: 'reset' })}>
-          Load example wall
-        </button>
+        <div className="header-actions">
+          <Segmented
+            bare
+            label="Show lengths in"
+            value={wall.units}
+            options={[['in', 'Inches'], ['ftin', 'Ft-in']]}
+            onChange={(value) => dispatch({ type: 'set', key: 'units', value })}
+          />
+          <button className="btn" type="button" onClick={() => dispatch({ type: 'reset' })}>
+            Load example
+          </button>
+        </div>
       </header>
 
       <div className="layout">
         <aside className="rail">
           <WallSettings wall={wall} dispatch={dispatch} />
-          <SheathingSettings wall={wall} dispatch={dispatch} />
-          <RoughOpeningSettings wall={wall} dispatch={dispatch} />
           <OpeningsEditor wall={wall} errorIds={errorIds} fmt={fmt} dispatch={dispatch} />
+          <RoughOpeningSettings wall={wall} dispatch={dispatch} />
+          <SheathingSettings wall={wall} dispatch={dispatch} />
         </aside>
 
         <main className="main">
@@ -60,17 +69,27 @@ export default function App() {
                 <h1 id="sheet-title">{wall.name || 'Wall elevation'}</h1>
                 <span className="sub">
                   {wall.view === 'deck'
-                    ? `On the deck, sheathing side up · bottom plate at the top, at the deck edge · same left and right as standing`
-                    : `Elevation from inside · 2x6 @ ${wall.spacing}" O.C. · not to scale`}
+                    ? 'On the deck, sheathing side up · bottom plate at the deck edge'
+                    : `From inside · 2x6 @ ${wall.spacing}" O.C. · not to scale`}
                 </span>
               </div>
-              <Segmented
-                bare
-                label="View"
-                value={wall.view}
-                options={[['standing', 'Standing'], ['deck', 'On the deck']]}
-                onChange={(value) => dispatch({ type: 'set', key: 'view', value })}
-              />
+              <div className="sheet-tools">
+                <button
+                  className="toggle"
+                  type="button"
+                  aria-pressed={wall.showSheathing === 'on'}
+                  onClick={() => dispatch({ type: 'set', key: 'showSheathing', value: wall.showSheathing === 'on' ? 'off' : 'on' })}
+                >
+                  <i className="sw-line" /> Sheathing
+                </button>
+                <Segmented
+                  bare
+                  label="View"
+                  value={wall.view}
+                  options={[['standing', 'Standing'], ['deck', 'On the deck']]}
+                  onChange={(value) => dispatch({ type: 'set', key: 'view', value })}
+                />
+              </div>
             </div>
             {framing ? (
               <>

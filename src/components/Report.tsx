@@ -1,4 +1,4 @@
-import { ROLES, type Framing, type Issue, type Role } from '../lib/framing';
+import { ROLES, type CutGroup, type Framing, type Issue, type Role } from '../lib/framing';
 import type { Formatter } from '../lib/units';
 
 /** CSS swatch token for a role (top plates share the plate color, both cripple kinds share one). */
@@ -8,7 +8,9 @@ export const swatchVar = (role: Role) => {
       ? 'plate'
       : role === 'crippleTop' || role === 'crippleBottom'
         ? 'cripple'
-        : role === 'seamStud'
+        : role === 'headPlate'
+          ? 'sill'
+          : role === 'seamStud'
           ? 'seam'
           : role === 'blocking'
             ? 'block'
@@ -22,7 +24,7 @@ const LEGEND: [string, Role][] = [
   ['King stud', 'king'],
   ['Jack / trimmer', 'jack'],
   ['Header', 'header'],
-  ['Rough sill', 'sill'],
+  ['Sill / head plate', 'sill'],
   ['Cripple', 'crippleTop'],
   ['Filler', 'filler'],
   ['Seam stud', 'seamStud'],
@@ -109,7 +111,7 @@ export function CutList({ framing, fmt, highlight, onHighlight }: CutListProps) 
                 </tr>
               </thead>
               <tbody>
-                {framing.cutList.map((g) => (
+                {framing.cutList.map((g, i) => (
                   <tr key={g.key} className={highlight === g.key ? 'hl' : undefined} onMouseEnter={() => onHighlight(g.key)}>
                     <td>
                       <span className="mname">
@@ -120,7 +122,7 @@ export function CutList({ framing, fmt, highlight, onHighlight }: CutListProps) 
                     <td className="len">{g.size}</td>
                     <td className="num">{g.qty}</td>
                     <td className="len">{fmt(g.length)}</td>
-                    <td className="note">{g.notes.join('. ')}</td>
+                    <td className="note">{repeatsNote(framing.cutList, i) ? '' : g.notes.join('. ')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -139,6 +141,13 @@ export function CutList({ framing, fmt, highlight, onHighlight }: CutListProps) 
       )}
     </section>
   );
+}
+
+/** True when a row has the same member and notes as the row above, so its note can be left off. */
+function repeatsNote(rows: CutGroup[], i: number) {
+  const prev = rows[i - 1];
+  const row = rows[i]!;
+  return !!prev && prev.role === row.role && prev.notes.join() === row.notes.join();
 }
 
 function Stat({ n, label }: { n: number; label: string }) {
@@ -175,8 +184,9 @@ export function Checks({ issues }: { issues: Issue[] }) {
         <p className="ok">No conflicts. Every opening clears the end studs, the top plate and its neighbours.</p>
       )}
       <p className="fineprint">
-        Header sizes picked on Auto are a rule-of-thumb starting point for a bearing wall. Confirm every header against IRC
-        Table R602.7 or your engineer's schedule before cutting.
+        Headers follow the Buckley-Watanabe structural plans (Harezlak Engineering, Rev. 1, 05/22/26): 4x8 typical per
+        plan note 3, beams by mark per the beam schedule, and trimmers, head plates, A35 clips and MSTA24 straps per
+        10/S4.1. Pick the scheduled beam for any opening the plans call out by mark.
       </p>
     </section>
   );

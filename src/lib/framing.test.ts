@@ -21,7 +21,8 @@ const wall = (over: Partial<WallSpec> = {}): WallSpec => ({
   spacing: 16,
   layoutFrom: 'left',
   topPlates: 2,
-  headerPlies: 2,
+  headerMount: 'dropped',
+  exterior: true,
   sillPlies: 1,
   sheathing: NO_SHEATHING_EFFECTS,
   openings: [],
@@ -82,19 +83,30 @@ describe('window', () => {
   const f = frame(wall({ openings: [opening()] }));
   const o = f.openings[0]!;
 
-  it('frames kings, jacks, header and sill around the rough opening', () => {
+  it('frames kings, jacks, a 4x8 header and a sill around the rough opening', () => {
     expect(xs(f, 'king')).toEqual([27, 79.5]);
     expect(xs(f, 'jack')).toEqual([28.5, 78]);
-    expect(of(f, 'jack')[0]!.length).toBeCloseTo(81); // 82 1/2 RO top - bottom plate
     const header = of(f, 'header')[0]!;
-    expect(header.size).toBe('2x8');
+    expect(header.size).toBe('4x8');
     expect(header.length).toBe(51);
     expect(of(f, 'sill')[0]!.length).toBe(48);
   });
 
-  it('sizes cripples above the header and below the sill', () => {
-    expect(o.gapAbove).toBeCloseTo(94.125 - (82.5 + 7.25));
-    expect(of(f, 'crippleTop').every((m) => Math.abs(m.length - 4.375) < 1e-9)).toBe(true);
+  it('drops the header tight under the top plates, with jacks up to it', () => {
+    expect(o.headerTop).toBeCloseTo(94.125);
+    expect(o.headerBottom).toBeCloseTo(94.125 - 7.25);
+    expect(of(f, 'jack')[0]!.length).toBeCloseTo(94.125 - 7.25 - 1.5);
+  });
+
+  it('puts a flat head plate at the top of the opening with cripples up to the header', () => {
+    const plate = of(f, 'headPlate');
+    expect(plate).toHaveLength(1);
+    expect(plate[0]).toMatchObject({ x: 30, z: 82.5, w: 48 });
+    expect(o.gapAbove).toBeCloseTo(86.875 - 84);
+    expect(xs(f, 'crippleTop')).toEqual([30, 47.25, 63.25, 76.5]);
+  });
+
+  it('sizes cripples below the sill', () => {
     expect(o.crippleBelow).toBeCloseTo(33);
     // end cripples plus layout cripples at 48 and 64; the one at 32 would overlap the end cripple
     expect(xs(f, 'crippleBottom')).toEqual([30, 47.25, 63.25, 76.5]);
@@ -105,9 +117,10 @@ describe('window', () => {
     for (const x of studs) expect(x + 1.5 <= 27 || x >= 81).toBe(true);
   });
 
-  it('counts header plies in the cut list', () => {
+  it('lists one header with its foam fill', () => {
     const g = f.cutList.find((c) => c.role === 'header')!;
-    expect(g.qty).toBe(2);
+    expect(g.qty).toBe(1);
+    expect(g.notes.join(' ')).toMatch(/2" rigid foam/);
   });
 });
 
@@ -127,28 +140,72 @@ describe('door', () => {
 });
 
 describe('headers', () => {
-  it('doubles jacks on wide openings', () => {
-    const f = frame(wall({ openings: [opening({ x: 40, width: 96 })] }));
+  const header = (f: Framing) => of(f, 'header')[0]!;
+
+  it('doubles jacks when the header is over 6\'-0" (10/S4.1)', () => {
+    // 68" RO: 71" header with single jacks
+    expect(of(frame(wall({ openings: [opening({ width: 68 })] })), 'jack')).toHaveLength(2);
+    // 70" RO: 73" header
+    const f = frame(wall({ openings: [opening({ x: 40, width: 70 })] }));
     expect(of(f, 'jack')).toHaveLength(4);
-    expect(of(f, 'header')[0]!.length).toBe(96 + 6);
+    expect(header(f).length).toBe(70 + 6);
   });
 
-  it('steps the header down when the preferred size will not fit', () => {
-    // 60" RO prefers 2x10; RO top 86" leaves 8 1/8" under the plates
-    const f = frame(wall({ openings: [opening({ width: 60, height: 50, sill: 36 })] }));
-    expect(of(f, 'header')[0]!.size).toBe('2x8');
-    expect(f.issues.some((i) => i.level === 'warning')).toBe(true);
+  it('adds A35 clips to long exterior headers only', () => {
+    const long = wall({ openings: [opening({ x: 40, width: 70 })] });
+    expect(frame(long).cutList.find((c) => c.role === 'header')!.notes.join(' ')).toMatch(/A35/);
+    expect(frame({ ...long, exterior: false }).cutList.find((c) => c.role === 'header')!.notes.join(' ')).not.toMatch(/A35/);
   });
 
-  it('uses a filler strip when the gap is too short for cripples', () => {
-    const f = frame(wall({ openings: [opening({ header: '2x10' })] }));
+  it('doubles the head plate at exterior openings over 8\'-0"', () => {
+    const f = frame(wall({ length: 300, openings: [opening({ x: 40, width: 100 })] }));
+    expect(of(f, 'headPlate')).toHaveLength(2);
+    expect(frame(wall({ length: 300, exterior: false, openings: [opening({ x: 40, width: 100 })] })).openings[0]!.headPlies).toBe(1);
+  });
+
+  it('uses scheduled beams by mark', () => {
+    const f = frame(wall({ openings: [opening({ header: '4x10' })] }));
+    expect(header(f).size).toBe('B4 4x10');
+    expect(header(f).h).toBe(9.25);
+    expect(f.cutList.find((c) => c.role === 'header')!.notes.join(' ')).toMatch(/B4 per beam schedule/);
+  });
+
+  it('rips a filler when the space under the header is too short for cripples', () => {
+    // 4x10 bottom at 84 7/8" over a head plate topping out at 84"
+    const f = frame(wall({ openings: [opening({ header: '4x10' })] }));
     expect(of(f, 'crippleTop')).toHaveLength(0);
-    expect(of(f, 'filler')[0]!.fillHeight).toBeCloseTo(94.125 - 91.75);
+    expect(of(f, 'filler')[0]!.fillHeight).toBeCloseTo(0.875);
   });
 
-  it('errors when an explicit header hits the top plate', () => {
-    const f = frame(wall({ openings: [opening({ header: '2x12', sill: 40 })] }));
+  it('raises a deep header into the double top plate when that makes it fit', () => {
+    // 3 1/2 x 11 7/8 LVL over a head at 82": needs 83 1/2" at its bottom
+    const f = frame(wall({ openings: [opening({ header: 'lvl-3.5x11.875', sill: 35.5 })] }));
+    const o = f.openings[0]!;
+    expect(o.hasError).toBe(false);
+    expect(o.headerTop).toBeCloseTo(95.625);
+    expect(o.topPlateCut).toEqual([28.5, 79.5]);
+    expect(f.issues.some((i) => /MSTA24/.test(i.message))).toBe(true);
+  });
+
+  it('errors when the header cannot fit even raised into the plate', () => {
+    const f = frame(wall({ openings: [opening({ header: 'lvl-3.5x11.875' })] }));
     expect(f.openings[0]!.hasError).toBe(true);
+  });
+
+  describe('sitting on the opening', () => {
+    const f = frame(wall({ headerMount: 'onJacks', openings: [opening()] }));
+    const o = f.openings[0]!;
+
+    it('puts the header on the jacks with cripples up to the plates', () => {
+      expect(o.headerBottom).toBe(82.5);
+      expect(of(f, 'jack')[0]!.length).toBeCloseTo(81);
+      expect(of(f, 'headPlate')).toHaveLength(0);
+      expect(o.gapAbove).toBeCloseTo(94.125 - 89.75);
+    });
+
+    it('errors when the header runs into the top plate', () => {
+      expect(frame(wall({ headerMount: 'onJacks', openings: [opening({ header: 'lvl-3.5x18' })] })).openings[0]!.hasError).toBe(true);
+    });
   });
 });
 

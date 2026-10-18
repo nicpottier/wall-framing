@@ -73,3 +73,48 @@ export function Segmented<V extends string>({ label, value, options, onChange, b
     </div>
   );
 }
+
+interface PanelProps {
+  title: string;
+  /** Shown beside the title, mainly so a closed panel still says what's set. */
+  summary?: ReactNode;
+  /** Buttons on the right of the header. */
+  actions?: ReactNode;
+  /** Render as a closable section that starts closed. */
+  collapsible?: boolean;
+  children: ReactNode;
+}
+
+export function Panel({ title, summary, actions, collapsible, children }: PanelProps) {
+  const id = useId();
+  if (collapsible) {
+    return (
+      <details className="panel collapsible">
+        <summary className="panel-head">
+          <span className="panel-title">
+            <h2 className="eyebrow">{title}</h2>
+            {summary && <span className="panel-summary">{summary}</span>}
+          </span>
+          <svg className="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+            <path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </summary>
+        {children}
+      </details>
+    );
+  }
+  return (
+    <section className="panel" aria-labelledby={id}>
+      <div className="panel-head">
+        <span className="panel-title">
+          <h2 className="eyebrow" id={id}>
+            {title}
+          </h2>
+          {summary && <span className="panel-summary">{summary}</span>}
+        </span>
+        {actions}
+      </div>
+      {children}
+    </section>
+  );
+}

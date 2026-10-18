@@ -152,13 +152,17 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing,
     </rect>
   );
 
-  // Bottom plate is drawn in segments around door cut-outs.
+  // Bottom plate is drawn in segments around door cut-outs; a lower top plate around raised headers.
   const cuts = openings.flatMap((o) => (o.plateCut ? [o.plateCut] : [])).sort((a, b) => a[0] - b[0]);
+  const topCuts = openings.flatMap((o) => (o.topPlateCut ? [o.topPlateCut] : [])).sort((a, b) => a[0] - b[0]);
+  const lowerTopPlateZ = H - wall.topPlates * T;
   const memberEls = members.flatMap((m) => {
-    if (m.role !== 'plate' || !cuts.length) return [rect(m, m.x, m.w, m.id)];
+    const segmentCuts =
+      m.role === 'plate' ? cuts : m.role === 'topPlate' && wall.topPlates === 2 && Math.abs(m.z - lowerTopPlateZ) < 1e-6 ? topCuts : [];
+    if (!segmentCuts.length) return [rect(m, m.x, m.w, m.id)];
     const els = [];
     let a = 0;
-    for (const [c0, c1] of cuts) {
+    for (const [c0, c1] of segmentCuts) {
       if (c0 > a) els.push(rect(m, a, c0 - a, `${m.id}-${a}`));
       a = Math.max(a, c1);
     }
@@ -205,7 +209,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing,
         {members
           .filter((m) => m.role === 'header')
           .map((m) => {
-            const label = `(${wall.headerPlies}) ${m.size} × ${fmt(m.length)}`;
+            const label = `${m.size} × ${fmt(m.length)}`;
             if (m.w * ppi < textWidth(label) + 8 || m.h * ppi < 12) return null;
             return (
               <text key={`hl${m.id}`} className="hdr-t" x={X(m.x + m.w / 2)} y={Y(m.z + m.h / 2) + 3.8} textAnchor="middle">
@@ -215,7 +219,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing,
           })}
 
         {openings.map((o) => (
-          <OpeningOverlay key={o.spec.id} o={o} framing={framing} fmt={fmt} v={v} plateBottom={plateBottom} />
+          <OpeningOverlay key={o.spec.id} o={o} framing={framing} fmt={fmt} v={v} />
         ))}
 
         {showSheathing && <SheathingOverlay framing={framing} fmt={fmt} v={v} aboveWall={!flipped} />}
@@ -260,10 +264,9 @@ interface OverlayProps {
   framing: Framing;
   fmt: Formatter;
   v: ViewMap;
-  plateBottom: number;
 }
 
-function OpeningOverlay({ o, framing, fmt, v, plateBottom }: OverlayProps) {
+function OpeningOverlay({ o, framing, fmt, v }: OverlayProps) {
   const { spec } = o;
   const { X, Y, sx, bt } = v;
   // Screen x of the rough opening's left and right edges as seen standing.
@@ -288,14 +291,14 @@ function OpeningOverlay({ o, framing, fmt, v, plateBottom }: OverlayProps) {
 
   return (
     <g>
-      <rect className={`ro${err}`} {...v.box(spec.x, o.roBottom, spec.width, spec.height)} />
-      <line className="ro-x" x1={xl} y1={yTop} x2={xr} y2={yBot} />
-      <line className="ro-x" x1={xr} y1={yTop} x2={xl} y2={yBot} />
-      <text className={`ro-t halo${err}`} x={cx} y={cy - 2} textAnchor="middle">
+      <rect className={`ro ${spec.type}${err}`} {...v.box(spec.x, o.roBottom, spec.width, spec.height)} />
+      <line className={`ro-x ${spec.type}`} x1={xl} y1={yTop} x2={xr} y2={yBot} />
+      <line className={`ro-x ${spec.type}`} x1={xr} y1={yTop} x2={xl} y2={yBot} />
+      <text className={`ro-t halo ${spec.type}${err}`} x={cx} y={cy - 2} textAnchor="middle">
         {title}
       </text>
       {roWidthPx > textWidth(size) + 50 && (
-        <text className={`ro-s halo${err}`} x={cx} y={cy + 13} textAnchor="middle">
+        <text className={`ro-s halo ${spec.type}${err}`} x={cx} y={cy + 13} textAnchor="middle">
           {size}
         </text>
       )}
@@ -303,16 +306,16 @@ function OpeningOverlay({ o, framing, fmt, v, plateBottom }: OverlayProps) {
       {/* inside the opening, just under the header */}
       <HDim x1={xl} x2={xr} y={yTop + 16 * bt} label={fmt(spec.width)} />
       <VDim x={xr - 11 * sx} y1={yTop} y2={yBot} label={`RO ${fmt(spec.height)}`} side={v.side('left')} />
-      <VDim x={xl + 11 * sx} y1={yTop} y2={Y(T)} label={`JACK ${fmt(o.roTop - T)}`} side={v.side('right')} />
+      <VDim x={xl + 11 * sx} y1={Y(o.headerBottom)} y2={Y(T)} label={`JACK ${fmt(o.headerBottom - T)}`} side={v.side('right')} />
       {spec.type === 'window' && (
         <VDim x={xr - 11 * sx} y1={yBot} y2={Y(0)} label={`SILL ${fmt(spec.sill)}`} side={v.side('left')} />
       )}
 
       {(tops.length > 0 || hasFill) && (
         <VDim
-          x={X(tops.length ? widestBay(o.headerX, o.headerX + o.headerLength, tops.map((m) => m.x)) : o.headerX + o.headerLength * 0.72)}
-          y1={Y(plateBottom)}
-          y2={Y(o.headerTop)}
+          x={X(tops.length ? widestBay(o.crippleSpan[0], o.crippleSpan[1], tops.map((m) => m.x)) : o.crippleSpan[0] + (o.crippleSpan[1] - o.crippleSpan[0]) * 0.72)}
+          y1={Y(o.crippleZone[1])}
+          y2={Y(o.crippleZone[0])}
           label={`${tops.length ? 'CRIPPLE' : 'FILL'} ${fmt(o.gapAbove)}`}
           side={v.side('right')}
           rotate={false}
