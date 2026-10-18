@@ -141,7 +141,7 @@ export function SheathingSettings({ wall, dispatch }: { wall: WallInput; dispatc
         {corner('cornerLeft', 'Left end corner')}
         {corner('cornerRight', 'Right end corner')}
         <p className="field-group full">
-          Layout and sheathing are pulled from the {wall.layoutFrom} end. An outside corner adds the sheathing thickness; an
+          Left and right are as seen from inside. Layout and sheathing are pulled from the {wall.layoutFrom} end. An outside corner adds the sheathing thickness; an
           inside corner adds the wall depth plus the sheathing.
         </p>
         <Segmented label="Seam studs" value={wall.seamStuds} options={[['single', 'Single'], ['double', 'Double']]} onChange={set('seamStuds')} />

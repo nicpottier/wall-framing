@@ -71,7 +71,7 @@ function OpeningCard({ opening: o, wall, hasError, fmt, dispatch }: CardProps) {
           {(id) => <input id={id} type="text" className="plain" autoComplete="off" value={o.label} onChange={(e) => patch({ label: e.target.value })} />}
         </Field>
         <Segmented label="Measure from" value={o.from} options={[['left', 'Left end'], ['right', 'Right end']]} onChange={(from) => patch({ from })} />
-        <Field label={`${o.from === 'left' ? 'Left' : 'Right'} end to R.O.`} hint={`Wall end to the ${o.from} edge of the rough opening`} full>
+        <Field label={`${o.from === 'left' ? 'Left' : 'Right'} end to R.O.`} hint={`Wall end to the ${o.from} edge of the rough opening, as seen from inside`} full>
           {(id) => <LengthInput id={id} value={o.offset} onChange={len('offset')} />}
         </Field>
         <Field label={`${kind} width`}>{(id) => <LengthInput id={id} value={o.width} onChange={len('width')} />}</Field>

@@ -4,7 +4,11 @@ import { T } from '../lib/lumber';
 import { toFraction, type Formatter } from '../lib/units';
 import { HDim, VDim, textWidth } from './Dimensions';
 
-/** standing: elevation from outside. deck: lying on the subfloor before lifting, rotated 180°. */
+/**
+ * standing: elevation seen from inside. deck: lying on the subfloor before lifting, sheathing side up.
+ * Standing at the top plate looking down at the deck, you face the same way as from inside, so the
+ * deck view keeps left and right and only flips top to bottom.
+ */
 export type WallView = 'standing' | 'deck';
 
 interface Props {
@@ -49,25 +53,45 @@ interface ViewMap {
   arrow: string;
 }
 
-function makeView(flipped: boolean, ox: number, padTop: number, ppi: number, L: number, zTop: number, layoutFrom: Side): ViewMap {
-  const X = (x: number) => ox + (flipped ? L - x : x) * ppi;
-  const Y = (z: number) => padTop + (flipped ? z : zTop - z) * ppi;
+interface Orientation {
+  /** Bottom plate at the top of the screen. */
+  flipZ: boolean;
+  /** Wall's left end on the right of the screen. */
+  mirrorX: boolean;
+}
+
+const ORIENTATION: Record<WallView, Orientation> = {
+  standing: { flipZ: false, mirrorX: false },
+  deck: { flipZ: true, mirrorX: false },
+};
+
+function makeView(
+  { flipZ, mirrorX }: Orientation,
+  ox: number,
+  padTop: number,
+  ppi: number,
+  L: number,
+  zTop: number,
+  layoutFrom: Side,
+): ViewMap {
+  const X = (x: number) => ox + (mirrorX ? L - x : x) * ppi;
+  const Y = (z: number) => padTop + (flipZ ? z : zTop - z) * ppi;
   return {
     X,
     Y,
     ppi,
-    sx: flipped ? -1 : 1,
-    bt: flipped ? -1 : 1,
+    sx: mirrorX ? -1 : 1,
+    bt: flipZ ? -1 : 1,
     box: (x, z, w, h) => ({
       x: Math.min(X(x), X(x + w)),
       y: Math.min(Y(z), Y(z + h)),
       width: w * ppi,
       height: h * ppi,
     }),
-    side: (s) => (flipped ? (s === 'left' ? 'right' : 'left') : s),
+    side: (s) => (mirrorX ? (s === 'left' ? 'right' : 'left') : s),
     left: Math.min(X(0), X(L)),
     textAt: (edge, near, far, dir) => (dir > 0 ? edge + far : edge - near),
-    arrow: (layoutFrom === 'left') !== flipped ? '→' : '←',
+    arrow: (layoutFrom === 'left') !== mirrorX ? '→' : '←',
   };
 }
 
@@ -100,20 +124,21 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing,
   const [wrapRef, measured] = useWidth<HTMLDivElement>();
   const { wall, plateBottom, studLength, members, openings, layout } = framing;
   const { length: L, height: H } = wall;
-  const flipped = view === 'deck';
+  const orient = ORIENTATION[view];
+  const flipped = orient.flipZ;
 
   // Standing, the drawing extends above the wall when sheathing runs past the top plate.
   // On the deck that part isn't on the wall yet, so it isn't shown.
   const zTop = showSheathing && !flipped ? Math.max(H, framing.sheathing.top) : H;
-  const padL = flipped ? PAD.end : PAD.start;
-  const padR = flipped ? PAD.start : PAD.end;
+  const padL = orient.mirrorX ? PAD.end : PAD.start;
+  const padR = orient.mirrorX ? PAD.start : PAD.end;
   const padT = flipped ? PAD.bottom : PAD.top;
   const padB = flipped ? PAD.top : PAD.bottom;
   const width = Math.max(measured, MIN_WIDTH);
   const ppi = Math.max(0.5, Math.min((width - padL - padR) / L, (MAX_HEIGHT - padT - padB) / zTop));
   const height = Math.round(padT + padB + zTop * ppi);
   const ox = padL + (width - padL - padR - L * ppi) / 2;
-  const v = makeView(flipped, ox, padT, ppi, L, zTop, wall.layoutFrom);
+  const v = makeView(orient, ox, padT, ppi, L, zTop, wall.layoutFrom);
   const { X, Y, sx, bt } = v;
 
   const rect = (m: Member, x: number, w: number, key: string) => (
@@ -156,7 +181,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing,
         height={height}
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label={flipped ? 'Wall framing as laid out on the deck' : 'Wall framing elevation'}
+        aria-label={flipped ? 'Wall framing as laid out on the deck' : 'Wall framing elevation from inside'}
         className={highlight ? 'focus' : undefined}
         onMouseLeave={() => onHighlight(null)}
       >

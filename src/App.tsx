@@ -60,8 +60,8 @@ export default function App() {
                 <h1 id="sheet-title">{wall.name || 'Wall elevation'}</h1>
                 <span className="sub">
                   {wall.view === 'deck'
-                    ? `On the deck, sheathing side up · bottom plate at the top, at the deck edge · 2x6 @ ${wall.spacing}" O.C.`
-                    : `Elevation from outside · 2x6 @ ${wall.spacing}" O.C. · not to scale`}
+                    ? `On the deck, sheathing side up · bottom plate at the top, at the deck edge · same left and right as standing`
+                    : `Elevation from inside · 2x6 @ ${wall.spacing}" O.C. · not to scale`}
                 </span>
               </div>
               <Segmented
