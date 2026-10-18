@@ -22,7 +22,7 @@ export function WallSettings({ wall, dispatch }: Props) {
   const set = setter(dispatch);
 
   return (
-    <Panel title="Wall">
+    <Panel title="Wall" tone="wall">
       <div className="fields">
         <Field label="Name" full>
           {(id) => (
@@ -75,7 +75,7 @@ export function RoughOpeningSettings({ wall, dispatch }: Props) {
   const summary = `Head ${wall.windowHeadHeight || '—'}" · ${wall.headerMount === 'dropped' ? 'headers under plate' : 'headers on opening'} · window +${wall.windowRoWidth}/${wall.windowRoHeight} · door +${wall.doorRoWidth}/${wall.doorRoHeight}`;
 
   return (
-    <Panel title="Rough openings" summary={summary} collapsible>
+    <Panel title="Rough openings" summary={summary} collapsible tone="openings">
       <div className="fields">
         <Field label="Window head height" hint="Floor to top of R.O. Windows can override it.">
           {(id) => <LengthInput id={id} value={wall.windowHeadHeight} onChange={set('windowHeadHeight')} />}
@@ -131,7 +131,7 @@ export function SheathingSettings({ wall, dispatch }: Props) {
   ].join(' · ');
 
   return (
-    <Panel title="Sheathing · 4x8" summary={summary} collapsible>
+    <Panel title="Sheathing · 4x8" summary={summary} collapsible tone="sheathing">
       <div className="fields">
         <Segmented
           label="Panels run"

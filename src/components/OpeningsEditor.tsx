@@ -16,14 +16,16 @@ export function OpeningsEditor({ wall, errorIds, fmt, dispatch }: Props) {
   const count = wall.openings.length;
   return (
     <Panel
+      tone="openings"
       title="Openings"
-      summary={count ? `${count}` : undefined}
       actions={
         <div className="btn-row">
           <button className="btn add window" type="button" onClick={() => dispatch({ type: 'addOpening', kind: 'window' })}>
+            <PlusIcon />
             <OpeningGlyph type="window" /> Window
           </button>
           <button className="btn add door" type="button" onClick={() => dispatch({ type: 'addOpening', kind: 'door' })}>
+            <PlusIcon />
             <OpeningGlyph type="door" /> Door
           </button>
         </div>
@@ -36,6 +38,14 @@ export function OpeningsEditor({ wall, errorIds, fmt, dispatch }: Props) {
         ))}
       </div>
     </Panel>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg className="plus" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
   );
 }
 

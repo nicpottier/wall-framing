@@ -82,14 +82,16 @@ interface PanelProps {
   actions?: ReactNode;
   /** Render as a closable section that starts closed. */
   collapsible?: boolean;
+  /** Section color. */
+  tone?: 'wall' | 'openings' | 'sheathing';
   children: ReactNode;
 }
 
-export function Panel({ title, summary, actions, collapsible, children }: PanelProps) {
+export function Panel({ title, summary, actions, collapsible, tone, children }: PanelProps) {
   const id = useId();
   if (collapsible) {
     return (
-      <details className="panel collapsible">
+      <details className="panel collapsible" data-tone={tone}>
         <summary className="panel-head">
           <span className="panel-title">
             <h2 className="eyebrow">{title}</h2>
@@ -104,7 +106,7 @@ export function Panel({ title, summary, actions, collapsible, children }: PanelP
     );
   }
   return (
-    <section className="panel" aria-labelledby={id}>
+    <section className="panel" data-tone={tone} aria-labelledby={id}>
       <div className="panel-head">
         <span className="panel-title">
           <h2 className="eyebrow" id={id}>
