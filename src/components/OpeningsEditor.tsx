@@ -1,15 +1,17 @@
 import type { Dispatch } from 'react';
 import { HEADER_SIZES } from '../lib/lumber';
-import type { OpeningInput, WallAction } from '../state/wall';
+import type { Formatter } from '../lib/units';
+import { resolveOpening, type OpeningInput, type WallAction, type WallInput } from '../state/wall';
 import { Field, LengthInput, Segmented } from './controls';
 
 interface Props {
-  openings: OpeningInput[];
+  wall: WallInput;
   errorIds: Set<string>;
+  fmt: Formatter;
   dispatch: Dispatch<WallAction>;
 }
 
-export function OpeningsEditor({ openings, errorIds, dispatch }: Props) {
+export function OpeningsEditor({ wall, errorIds, fmt, dispatch }: Props) {
   return (
     <section className="panel" aria-labelledby="ops-h">
       <div className="panel-head">
@@ -26,18 +28,28 @@ export function OpeningsEditor({ openings, errorIds, dispatch }: Props) {
         </div>
       </div>
       <div className="ops">
-        {openings.length === 0 && <p className="empty">No openings yet. Add a window or door to frame it in.</p>}
-        {openings.map((o) => (
-          <OpeningCard key={o.id} opening={o} hasError={errorIds.has(o.id)} dispatch={dispatch} />
+        {wall.openings.length === 0 && <p className="empty">No openings yet. Add a window or door to frame it in.</p>}
+        {wall.openings.map((o) => (
+          <OpeningCard key={o.id} opening={o} wall={wall} hasError={errorIds.has(o.id)} fmt={fmt} dispatch={dispatch} />
         ))}
       </div>
     </section>
   );
 }
 
-function OpeningCard({ opening: o, hasError, dispatch }: { opening: OpeningInput; hasError: boolean; dispatch: Dispatch<WallAction> }) {
+interface CardProps {
+  opening: OpeningInput;
+  wall: WallInput;
+  hasError: boolean;
+  fmt: Formatter;
+  dispatch: Dispatch<WallAction>;
+}
+
+function OpeningCard({ opening: o, wall, hasError, fmt, dispatch }: CardProps) {
   const patch = (p: Partial<OpeningInput>) => dispatch({ type: 'updateOpening', id: o.id, patch: p });
-  const len = (key: 'x' | 'width' | 'height' | 'sill') => (value: string) => patch({ [key]: value });
+  const len = (key: 'offset' | 'width' | 'height' | 'headHeight') => (value: string) => patch({ [key]: value });
+  const kind = o.type === 'window' ? 'Window' : 'Door';
+  const r = resolveOpening(o, wall);
 
   return (
     <div className={`op${hasError ? ' has-err' : ''}`} data-type={o.type}>
@@ -48,7 +60,7 @@ function OpeningCard({ opening: o, hasError, dispatch }: { opening: OpeningInput
           label="Opening type"
           value={o.type}
           options={[['window', 'Window'], ['door', 'Door']]}
-          onChange={(kind) => dispatch({ type: 'setOpeningType', id: o.id, kind })}
+          onChange={(k) => dispatch({ type: 'setOpeningType', id: o.id, kind: k })}
         />
         <button className="icon-btn" type="button" aria-label={`Remove ${o.label}`} onClick={() => dispatch({ type: 'removeOpening', id: o.id })}>
           ×
@@ -58,11 +70,16 @@ function OpeningCard({ opening: o, hasError, dispatch }: { opening: OpeningInput
         <Field label="Label">
           {(id) => <input id={id} type="text" className="plain" autoComplete="off" value={o.label} onChange={(e) => patch({ label: e.target.value })} />}
         </Field>
-        <Field label="Left end to R.O.">{(id) => <LengthInput id={id} value={o.x} onChange={len('x')} />}</Field>
-        <Field label="R.O. width">{(id) => <LengthInput id={id} value={o.width} onChange={len('width')} />}</Field>
-        <Field label="R.O. height">{(id) => <LengthInput id={id} value={o.height} onChange={len('height')} />}</Field>
+        <Segmented label="Measure from" value={o.from} options={[['left', 'Left end'], ['right', 'Right end']]} onChange={(from) => patch({ from })} />
+        <Field label={`${o.from === 'left' ? 'Left' : 'Right'} end to R.O.`} hint={`Wall end to the ${o.from} edge of the rough opening`} full>
+          {(id) => <LengthInput id={id} value={o.offset} onChange={len('offset')} />}
+        </Field>
+        <Field label={`${kind} width`}>{(id) => <LengthInput id={id} value={o.width} onChange={len('width')} />}</Field>
+        <Field label={`${kind} height`}>{(id) => <LengthInput id={id} value={o.height} onChange={len('height')} />}</Field>
         {o.type === 'window' && (
-          <Field label="Floor to R.O. sill">{(id) => <LengthInput id={id} value={o.sill} onChange={len('sill')} />}</Field>
+          <Field label="Head height" hint={o.headHeight.trim() ? 'Overrides the wall setting' : 'Blank uses the wall setting'} full>
+            {(id) => <LengthInput id={id} value={o.headHeight} onChange={len('headHeight')} optional placeholder={wall.windowHeadHeight} />}
+          </Field>
         )}
         <Field label="Header">
           {(id) => (
@@ -85,6 +102,26 @@ function OpeningCard({ opening: o, hasError, dispatch }: { opening: OpeningInput
             </select>
           )}
         </Field>
+        {r.ok && (
+          <dl className="derived full">
+            <div>
+              <dt>Rough opening</dt>
+              <dd>
+                {fmt(r.roWidth)} × {fmt(r.roHeight)}
+              </dd>
+            </div>
+            {o.type === 'window' && (
+              <div>
+                <dt>Sill</dt>
+                <dd>{fmt(r.sill)}</dd>
+              </div>
+            )}
+            <div>
+              <dt>From left</dt>
+              <dd>{fmt(r.x)}</dd>
+            </div>
+          </dl>
+        )}
       </div>
     </div>
   );

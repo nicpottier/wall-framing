@@ -61,3 +61,36 @@ export function WallSettings({ wall, dispatch }: { wall: WallInput; dispatch: Di
     </section>
   );
 }
+
+/** Wall-wide rules for sizing rough openings from window and door unit sizes. */
+export function RoughOpeningSettings({ wall, dispatch }: { wall: WallInput; dispatch: Dispatch<WallAction> }) {
+  const set = (key: WallSettingKey) => (value: string) => dispatch({ type: 'set', key, value });
+
+  return (
+    <section className="panel" aria-labelledby="ro-h">
+      <div className="panel-head">
+        <h2 className="eyebrow" id="ro-h">
+          Rough openings
+        </h2>
+      </div>
+      <div className="fields">
+        <Field label="Window head height" hint="Floor to top of R.O. Each window can override it." full>
+          {(id) => <LengthInput id={id} value={wall.windowHeadHeight} onChange={set('windowHeadHeight')} />}
+        </Field>
+        <p className="field-group full">Added to the unit size to get the rough opening</p>
+        <Field label="Window, width +">
+          {(id) => <LengthInput id={id} value={wall.windowRoWidth} onChange={set('windowRoWidth')} />}
+        </Field>
+        <Field label="Window, height +">
+          {(id) => <LengthInput id={id} value={wall.windowRoHeight} onChange={set('windowRoHeight')} />}
+        </Field>
+        <Field label="Door, width +">
+          {(id) => <LengthInput id={id} value={wall.doorRoWidth} onChange={set('doorRoWidth')} />}
+        </Field>
+        <Field label="Door, height +">
+          {(id) => <LengthInput id={id} value={wall.doorRoHeight} onChange={set('doorRoHeight')} />}
+        </Field>
+      </div>
+    </section>
+  );
+}

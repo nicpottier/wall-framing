@@ -20,6 +20,8 @@ export interface OpeningSpec {
   sill: number;
   header: HeaderSize | 'auto';
   jacksPerSide: 'auto' | 1 | 2;
+  /** Size of the window or door unit itself, for labeling. */
+  unit?: { width: number; height: number };
 }
 
 export interface WallSpec {
@@ -282,7 +284,7 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
       frame.crippleBelow = cl;
       if (cl < 0) {
         frame.hasError = true;
-        issue('error', `${tag}: the sill is too low to frame. Raise it to at least ${fmt((wall.sillPlies + 1) * T)}.`, oid);
+        issue('error', `${tag}: the sill is too low to frame. Raise the head height or use a shorter window so the sill is at least ${fmt((wall.sillPlies + 1) * T)} off the floor.`, oid);
       } else if (cl < MIN_CRIPPLE) {
         issue('warning', `${tag}: cripples under the sill are only ${fmt(cl)} long. Consider flat blocking instead.`, oid);
       }

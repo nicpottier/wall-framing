@@ -23,11 +23,14 @@ interface LengthInputProps {
   id: string;
   value: string;
   onChange: (value: string) => void;
+  /** Blank is allowed (the placeholder shows the value that applies instead). */
+  optional?: boolean;
+  placeholder?: string;
 }
 
 /** Text input for tape-measure lengths; flags text that can't be read. */
-export function LengthInput({ id, value, onChange }: LengthInputProps) {
-  const invalid = !Number.isFinite(parseLength(value));
+export function LengthInput({ id, value, onChange, optional, placeholder }: LengthInputProps) {
+  const invalid = !(optional && !value.trim()) && !Number.isFinite(parseLength(value));
   return (
     <input
       id={id}
@@ -37,6 +40,7 @@ export function LengthInput({ id, value, onChange }: LengthInputProps) {
       className={invalid ? 'invalid' : undefined}
       aria-invalid={invalid}
       value={value}
+      placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
     />
   );

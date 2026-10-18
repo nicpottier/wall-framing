@@ -197,7 +197,9 @@ function OpeningOverlay({ o, framing, fmt, X, Y, plateBottom }: OverlayProps) {
   const cx = (x0 + x1) / 2;
   const cy = (y0 + y1) / 2;
   const title = `${spec.label} · ${spec.type.toUpperCase()}`;
-  const size = `${toFraction(spec.width)} × ${toFraction(spec.height)} RO`;
+  const ro = `RO ${toFraction(spec.width)} × ${toFraction(spec.height)}`;
+  const full = spec.unit ? `${toFraction(spec.unit.width)} × ${toFraction(spec.unit.height)} unit · ${ro}` : ro;
+  const size = x1 - x0 > textWidth(full) + 50 ? full : ro;
 
   const ownMembers = framing.members.filter((m) => m.openingId === spec.id);
   const tops = ownMembers.filter((m) => m.role === 'crippleTop');

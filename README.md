@@ -20,7 +20,7 @@ src/
     lumber.ts     Lumber constants (actual sizes), header rule of thumb, precut lengths
     framing.ts    The framing engine: WallSpec in -> members, openings, issues, cut list out
   state/
-    wall.ts       Form state as typed text, reducer actions, parsing to WallSpec, localStorage
+    wall.ts       Form state as typed text, rough-opening resolution, reducer, parsing to WallSpec, localStorage
   components/
     Elevation.tsx SVG elevation drawing and dimensions
     Dimensions.tsx Drafting primitives (HDim / VDim)
@@ -33,6 +33,9 @@ The data flow is one way: **form text → `toWallSpec` → `computeFraming` → 
 ## Framing conventions
 
 - Wall height is measured from the floor to the top of the top plate. Stud length = height − bottom plate − top plate(s). A 97 1/8" wall gets 92 5/8" precuts.
+- Openings are entered by unit size (the window or door itself). The rough opening is the unit size plus the wall's allowances, set separately for window and door width and height.
+- Window sills come from the head height (floor to top of rough opening). It is set once for the wall and can be overridden per window. Sill = head height − rough opening height.
+- Each opening is located from the left or right end of the wall, to the near edge of its rough opening.
 - Layout marks put stud centers on the spacing, measured from the chosen end, so sheathing edges land on studs. End studs sit flush at both ends.
 - Each opening gets a king stud on each side, jack studs (trimmers) under the header, and a header sized by span. Auto picks the size; openings wider than 72" get double jacks.
 - Above the header, a gap of 3" or more gets cripples on layout. A smaller gap gets a ripped filler strip.
