@@ -58,6 +58,7 @@ Left and right are always as seen **from inside** the building. Enter opening po
 - Panels run vertical (4' wide, 8' tall) or horizontal (8' wide, 4' tall). Sheathing and stud layout are both pulled from the layout end, so panel seams land on studs.
 - **Corners** shift where the sheathing starts relative to the framing end: *outside* (this wall runs past) adds the sheathing thickness; *inside* (this wall butts in) adds the wall depth plus the sheathing thickness. A 2" panel on an outside corner puts the first layout mark at 14" and the first 4' seam at 46".
 - **Seam studs**: *double* puts two studs straddling each vertical seam (replacing the layout stud); *single* makes sure one stud is centered under it. Seams that fall inside an opening's framing with nothing behind them are flagged.
+- **What's drawn** is the sheathing hung on the deck before the wall is stood: from the first full row up to the last row that is mostly on this wall. A row mostly above the top plate belongs to the wall above, and the strip below the first row goes on after the wall is stood.
 - **Start height** is the bottom of the first full panel row; horizontal seams repeat every panel height above it. With blocking on, a 2x4 on the flat is centered behind each seam, giving 1 3/4" of nailing to each panel edge, in every bay, skipping rough openings, headers and sills.
 
 ### Headers (Buckley-Watanabe structural plans, Harezlak Engineering, Rev. 1, 05/22/26)

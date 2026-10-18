@@ -354,8 +354,12 @@ function SheathingOverlay({ framing, fmt, v, aboveWall }: SheathingProps) {
   const top = aboveWall ? sh.top : Math.min(sh.top, H);
   const cutOff = sh.top > top;
   const tickY = Y(Math.max(H, top)) + 48 * out;
+  // Sheathing hung on the deck runs from the first full row up to its top; the strip below and any
+  // row mostly on the wall above go on after the wall is stood.
+  const bottom = Math.min(wall.sheathing.startHeight, top);
+  const seams = sh.horizontalSeams.filter((z) => z <= top + 1e-6);
   // Seams, then the wall top and the sheathing top, measured up from the floor.
-  const chain = [0, ...sh.horizontalSeams, ...(top > H ? [H, top] : [top])];
+  const chain = [...new Set([0, ...seams, ...(top > H ? [H, top] : [top])])].sort((a, b) => a - b);
   const dimX = X(right) + 28 * sx;
   const cornerTitle = (ext: number, end: string) =>
     `Sheathing runs ${fmt(ext)} past the ${end} end of the framing to the outside corner`;
@@ -381,19 +385,19 @@ function SheathingOverlay({ framing, fmt, v, aboveWall }: SheathingProps) {
         </>
       )}
       {sh.extLeft > 0 && (
-        <line className="sh-edge" x1={X(left)} y1={Y(top)} x2={X(left)} y2={Y(0)}>
+        <line className="sh-edge" x1={X(left)} y1={Y(top)} x2={X(left)} y2={Y(bottom)}>
           <title>{cornerTitle(sh.extLeft, 'left')}</title>
         </line>
       )}
       {sh.extRight > 0 && (
-        <line className="sh-edge" x1={X(right)} y1={Y(top)} x2={X(right)} y2={Y(0)}>
+        <line className="sh-edge" x1={X(right)} y1={Y(top)} x2={X(right)} y2={Y(bottom)}>
           <title>{cornerTitle(sh.extRight, 'right')}</title>
         </line>
       )}
       {sh.verticalSeams.map((s) => (
-        <line key={`vs${s.x}`} className="sh-seam" x1={X(s.x)} y1={Y(Math.max(H, top))} x2={X(s.x)} y2={Y(0)} />
+        <line key={`vs${s.x}`} className="sh-seam" x1={X(s.x)} y1={Y(top)} x2={X(s.x)} y2={Y(bottom)} />
       ))}
-      {sh.horizontalSeams.map((z) => (
+      {seams.map((z) => (
         <line key={`hs${z}`} className="sh-seam" x1={X(left)} y1={Y(z)} x2={X(right)} y2={Y(z)} />
       ))}
 

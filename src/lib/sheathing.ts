@@ -58,7 +58,10 @@ export interface SheathingLayout {
   verticalSeams: SeamMark[];
   /** Heights of horizontal seams within the wall. */
   horizontalSeams: number[];
-  /** Top edge of the panel row that covers the top of the wall. */
+  /**
+   * Top of the sheathing hung before the wall is stood: the last panel row that is mostly on this
+   * wall. A row mostly above the top plate belongs to the wall above and goes on later.
+   */
   top: number;
 }
 
@@ -96,8 +99,8 @@ export function sheathingLayout(wall: {
     if (z > EPS) horizontalSeams.push(z);
   }
 
-  // Rows stack up from the start height until one reaches the top of the wall.
-  const top = s.startHeight + Math.max(1, Math.ceil((H - s.startHeight - EPS) / panel.height)) * panel.height;
+  let top = s.startHeight;
+  while (top < H - EPS && Math.min(top + panel.height, H) - top > panel.height / 2 + EPS) top += panel.height;
 
   return { panel, extLeft, extRight, extOrigin, verticalSeams, horizontalSeams, top };
 }

@@ -295,10 +295,14 @@ describe('sheathing', () => {
     expect(f.sheathing.verticalSeams.map((s) => s.x)).toEqual([96, 192]);
   });
 
-  it('finds the top of the panel row that covers the top of the wall', () => {
+  it('tops out at the last panel row that is mostly on this wall', () => {
+    // 12-108: 85 1/8" of 96" on the wall, so it goes on before the wall is stood
     expect(frame(wall({ sheathing: sheathing({ startHeight: 12 }) })).sheathing.top).toBe(108);
+    // 60-108: 37 1/8" of 48" on the wall
     expect(frame(wall({ sheathing: sheathing({ orientation: 'horizontal', startHeight: 12 }) })).sheathing.top).toBe(108);
-    expect(frame(wall({ sheathing: sheathing({ startHeight: 0 }) })).sheathing.top).toBe(192);
+    // 96-192 is almost all on the wall above
+    expect(frame(wall({ sheathing: sheathing({ startHeight: 0 }) })).sheathing.top).toBe(96);
+    expect(frame(wall({ sheathing: sheathing({ orientation: 'horizontal', startHeight: 0 }) })).sheathing.top).toBe(96);
     expect(frame(wall({ height: 96, sheathing: sheathing({ startHeight: 0 }) })).sheathing.top).toBe(96);
   });
 
