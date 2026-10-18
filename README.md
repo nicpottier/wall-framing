@@ -11,6 +11,10 @@ npm test           # engine unit tests (Vitest)
 npm run build      # typecheck + production build to dist/
 ```
 
+## Deploying
+
+`.github/workflows/deploy.yml` tests, builds and publishes `dist/` to GitHub Pages on every push to `main`. One-time setup: in the repo's **Settings → Pages**, set **Source** to **GitHub Actions**. The build uses relative asset paths, so it works at `https://<user>.github.io/<repo>/`.
+
 ## How it's organized
 
 ```
