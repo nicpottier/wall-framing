@@ -374,6 +374,8 @@ type AddIssue = (level: IssueLevel, message: string, openingId?: string) => void
 
 const FULL_HEIGHT: Role[] = ['stud', 'seamStud', 'king'];
 const VERTICAL: Role[] = ['stud', 'seamStud', 'king', 'jack', 'crippleTop', 'crippleBottom'];
+/** Seam blocking is a 2x4 laid flat, so its wide face shows in elevation. */
+const BLOCK_FACE = DEPTH['2x4'];
 const overlapsX = (m: Member, x0: number, x1: number) => m.x < x1 - EPS && m.x + m.w > x0 + EPS;
 
 /**
@@ -432,8 +434,8 @@ function placeSeamStuds(
 }
 
 /**
- * Adds a block on edge, centered on each horizontal seam, in every bay that has framing on both
- * sides at that height and isn't a rough opening, header or sill.
+ * Adds a 2x4 on the flat, centered on each horizontal seam, in every bay that has framing on both
+ * sides at that height and isn't a rough opening, header or sill. Flat, its 3 1/2" face backs the seam.
  */
 function placeSeamBlocking(
   sheet: SheathingLayout,
@@ -445,22 +447,22 @@ function placeSeamBlocking(
   for (const z of sheet.horizontalSeams) {
     // Seams on the plates already have backing.
     if (z <= T + EPS || z >= plateBottom - EPS) continue;
-    const bz = Math.min(Math.max(z - T / 2, T), plateBottom - T);
+    const bz = Math.min(Math.max(z - BLOCK_FACE / 2, T), plateBottom - BLOCK_FACE);
     const posts = members
-      .filter((m) => VERTICAL.includes(m.role) && m.z <= bz + EPS && m.z + m.h >= bz + T - EPS)
+      .filter((m) => VERTICAL.includes(m.role) && m.z <= bz + EPS && m.z + m.h >= bz + BLOCK_FACE - EPS)
       .sort((a, b) => a.x - b.x);
     for (let i = 1; i < posts.length; i++) {
       const x0 = posts[i - 1]!.x + T;
       const x1 = posts[i]!.x;
       if (x1 - x0 < 0.25) continue;
       const hitsFlat = members.some(
-        (m) => (m.role === 'header' || m.role === 'sill' || m.role === 'filler') && overlapsX(m, x0, x1) && m.z < bz + T - EPS && m.z + m.h > bz + EPS,
+        (m) => (m.role === 'header' || m.role === 'sill' || m.role === 'filler') && overlapsX(m, x0, x1) && m.z < bz + BLOCK_FACE - EPS && m.z + m.h > bz + EPS,
       );
       const inOpening = openings.some(
-        (o) => x0 < o.spec.x + o.spec.width - EPS && x1 > o.spec.x + EPS && bz < o.roTop - EPS && bz + T > o.roBottom + EPS,
+        (o) => x0 < o.spec.x + o.spec.width - EPS && x1 > o.spec.x + EPS && bz < o.roTop - EPS && bz + BLOCK_FACE > o.roBottom + EPS,
       );
       if (hitsFlat || inOpening) continue;
-      add({ role: 'blocking', x: x0, z: bz, w: x1 - x0, h: T, length: x1 - x0, seamHeight: z });
+      add({ role: 'blocking', x: x0, z: bz, w: x1 - x0, h: BLOCK_FACE, size: '2x4', length: x1 - x0, seamHeight: z });
     }
   }
 }
@@ -494,7 +496,7 @@ function buildCutList(wall: WallSpec, members: Member[], openings: OpeningFrame[
     if (g.role === 'seamStud') {
       g.notes.push(wall.sheathing.seamStuds === 'double' ? 'Pairs straddle vertical sheathing seams' : 'Centered under vertical sheathing seams');
     }
-    if (g.role === 'blocking' && !g.notes.length) g.notes.push('On edge, centered on horizontal sheathing seams');
+    if (g.role === 'blocking' && !g.notes.length) g.notes.push('2x4 on the flat, centered on horizontal sheathing seams');
     if ((g.role === 'stud' || g.role === 'seamStud' || g.role === 'king') && g.length === round16(studLength)) {
       const pre = PRECUTS[String(g.length)];
       if (pre) g.notes.push(`Matches ${pre} studs`);

@@ -213,7 +213,8 @@ describe('sheathing', () => {
   it('blocks horizontal seams across every bay, centered on the seam', () => {
     const f = frame(wall({ sheathing: sheathing({ startHeight: 12 }) }));
     const blocks = of(f, 'blocking');
-    expect(blocks.every((b) => b.z === 11.25)).toBe(true);
+    // 2x4 flat: 3 1/2" face centered on the 12" seam
+    expect(blocks.every((b) => b.z === 10.25 && b.h === 3.5 && b.size === '2x4')).toBe(true);
     // blocks plus the studs between the end studs fill 1 1/2" to 238 1/2"
     const posts = of(f, 'stud').length - 2;
     expect(blocks.reduce((a, b) => a + b.w, 0) + posts * 1.5).toBeCloseTo(237);

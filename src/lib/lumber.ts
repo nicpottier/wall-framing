@@ -6,10 +6,11 @@ export const WALL_DEPTH = 5.5;
 
 export const HEADER_SIZES = ['2x6', '2x8', '2x10', '2x12'] as const;
 export type HeaderSize = (typeof HEADER_SIZES)[number];
-export type LumberSize = HeaderSize;
+export type LumberSize = '2x4' | HeaderSize;
 
 /** Actual face depth of each 2x size. */
 export const DEPTH: Record<LumberSize, number> = {
+  '2x4': 3.5,
   '2x6': 5.5,
   '2x8': 7.25,
   '2x10': 9.25,
