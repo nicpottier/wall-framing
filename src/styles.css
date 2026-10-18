@@ -124,10 +124,6 @@ body {
   font: 14px/1.45 var(--f-ui);
   -webkit-font-smoothing: antialiased;
 }
-body.dragging {
-  cursor: grabbing;
-  user-select: none;
-}
 
 /* ---------- App chrome ---------- */
 .app-header {
@@ -421,7 +417,7 @@ input.invalid {
 .svg-wrap svg {
   display: block;
 }
-.drag-hint {
+.sheet-hint {
   font-size: 12px;
   color: var(--muted);
   padding: 0 18px 8px;
@@ -530,11 +526,6 @@ svg.focus .m:not(.hl) {
   stroke: var(--accent);
   stroke-width: 1;
   stroke-dasharray: 6 4;
-  cursor: grab;
-  touch-action: none;
-}
-.ro:hover {
-  fill: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 .ro.err {
   stroke: var(--err);

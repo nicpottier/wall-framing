@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import { computeFraming } from './lib/framing';
-import { makeFormatter, toFraction } from './lib/units';
+import { makeFormatter } from './lib/units';
 import { loadWall, saveWall, toWallSpec, wallReducer } from './state/wall';
 import { Elevation } from './components/Elevation';
 import { WallSettings } from './components/WallSettings';
@@ -28,11 +28,6 @@ export default function App() {
     framing?.openings.forEach((o) => o.hasError && ids.add(o.spec.id));
     return ids;
   }, [issues, framing]);
-
-  const moveOpening = useCallback(
-    (id: string, x: number) => dispatch({ type: 'updateOpening', id, patch: { x: toFraction(x) } }),
-    [],
-  );
 
   return (
     <>
@@ -63,8 +58,8 @@ export default function App() {
             </div>
             {framing ? (
               <>
-                <Elevation framing={framing} fmt={fmt} highlight={highlight} onHighlight={setHighlight} onMoveOpening={moveOpening} />
-                <div className="drag-hint">Drag an opening sideways to move it. Hover a member to see its size and length.</div>
+                <Elevation framing={framing} fmt={fmt} highlight={highlight} onHighlight={setHighlight} />
+                <div className="sheet-hint">Hover a member to see its size and length.</div>
                 <Legend />
                 <TitleBlock framing={framing} name={wall.name} fmt={fmt} />
               </>

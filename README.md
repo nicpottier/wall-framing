@@ -22,7 +22,7 @@ src/
   state/
     wall.ts       Form state as typed text, reducer actions, parsing to WallSpec, localStorage
   components/
-    Elevation.tsx SVG elevation drawing, dimensions, drag-to-move openings
+    Elevation.tsx SVG elevation drawing and dimensions
     Dimensions.tsx Drafting primitives (HDim / VDim)
     WallSettings.tsx, OpeningsEditor.tsx, Report.tsx (cut list, checks, legend, title block)
   App.tsx         Wires state -> engine -> views

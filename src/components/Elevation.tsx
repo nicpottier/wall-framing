@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ROLES, type Framing, type Member, type OpeningFrame } from '../lib/framing';
 import { T } from '../lib/lumber';
 import { toFraction, type Formatter } from '../lib/units';
@@ -9,8 +9,6 @@ interface Props {
   fmt: Formatter;
   highlight: string | null;
   onHighlight: (group: string | null) => void;
-  /** Called while dragging an opening; x is the new rough-opening left edge in inches. */
-  onMoveOpening: (id: string, x: number) => void;
 }
 
 const PAD = { left: 108, right: 40, top: 64, bottom: 100 };
@@ -42,7 +40,7 @@ function widestBay(lo: number, hi: number, xs: number[]) {
   return best.c;
 }
 
-export function Elevation({ framing, fmt, highlight, onHighlight, onMoveOpening }: Props) {
+export function Elevation({ framing, fmt, highlight, onHighlight }: Props) {
   const [wrapRef, measured] = useWidth<HTMLDivElement>();
   const { wall, plateBottom, studLength, members, openings, layout } = framing;
   const { length: L, height: H } = wall;
@@ -57,39 +55,6 @@ export function Elevation({ framing, fmt, highlight, onHighlight, onMoveOpening 
   const X = (x: number) => ox + x * ppi;
   const Y = (z: number) => PAD.top + (H - z) * ppi;
 
-  // Dragging openings along the wall, snapped to 1/2".
-  const drag = useRef<{ id: string; x0: number; cx: number; ppi: number } | null>(null);
-  const [dragging, setDragging] = useState(false);
-  useEffect(() => {
-    if (!dragging) return;
-    const move = (e: PointerEvent) => {
-      const d = drag.current;
-      if (!d) return;
-      const nx = Math.max(0, Math.round((d.x0 + (e.clientX - d.cx) / d.ppi) * 2) / 2);
-      onMoveOpening(d.id, nx);
-    };
-    const up = () => {
-      drag.current = null;
-      setDragging(false);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-    window.addEventListener('pointercancel', up);
-    document.body.classList.add('dragging');
-    return () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      window.removeEventListener('pointercancel', up);
-      document.body.classList.remove('dragging');
-    };
-  }, [dragging, onMoveOpening]);
-
-  const startDrag = (o: OpeningFrame) => (e: ReactPointerEvent) => {
-    e.preventDefault();
-    drag.current = { id: o.spec.id, x0: o.spec.x, cx: e.clientX, ppi };
-    setDragging(true);
-  };
-
   const rect = (m: Member, x: number, w: number, key: string) => (
     <rect
       key={key}
@@ -98,7 +63,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, onMoveOpening 
       y={Y(m.z + m.h)}
       width={w * ppi}
       height={m.h * ppi}
-      onMouseEnter={() => !dragging && onHighlight(m.group)}
+      onMouseEnter={() => onHighlight(m.group)}
     >
       <title>{`${ROLES[m.role].name}${m.isEnd ? ' (end)' : ''} · ${m.size} × ${fmt(m.length)}`}</title>
     </rect>
@@ -175,7 +140,6 @@ export function Elevation({ framing, fmt, highlight, onHighlight, onMoveOpening 
             X={X}
             Y={Y}
             plateBottom={plateBottom}
-            onPointerDown={startDrag(o)}
           />
         ))}
 
@@ -221,10 +185,9 @@ interface OverlayProps {
   X: (x: number) => number;
   Y: (z: number) => number;
   plateBottom: number;
-  onPointerDown: (e: ReactPointerEvent) => void;
 }
 
-function OpeningOverlay({ o, framing, fmt, X, Y, plateBottom, onPointerDown }: OverlayProps) {
+function OpeningOverlay({ o, framing, fmt, X, Y, plateBottom }: OverlayProps) {
   const { spec } = o;
   const x0 = X(spec.x);
   const x1 = X(spec.x + spec.width);
@@ -244,9 +207,7 @@ function OpeningOverlay({ o, framing, fmt, X, Y, plateBottom, onPointerDown }: O
 
   return (
     <g>
-      <rect className={`ro${err}`} x={x0} y={y0} width={x1 - x0} height={y1 - y0} onPointerDown={onPointerDown}>
-        <title>{`${spec.label}: drag to move`}</title>
-      </rect>
+      <rect className={`ro${err}`} x={x0} y={y0} width={x1 - x0} height={y1 - y0} />
       <line className="ro-x" x1={x0} y1={y0} x2={x1} y2={y1} />
       <line className="ro-x" x1={x1} y1={y0} x2={x0} y2={y1} />
       <text className={`ro-t halo${err}`} x={cx} y={cy - 2} textAnchor="middle">
