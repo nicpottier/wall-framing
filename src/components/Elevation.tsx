@@ -47,15 +47,17 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing 
   const { wall, plateBottom, studLength, members, openings, layout } = framing;
   const { length: L, height: H } = wall;
 
+  // Drawing extends above the wall when sheathing runs past the top plate.
+  const zTop = showSheathing ? Math.max(H, framing.sheathing.top) : H;
   const width = Math.max(measured, MIN_WIDTH);
   const ppi = Math.max(
     0.5,
-    Math.min((width - PAD.left - PAD.right) / L, (MAX_HEIGHT - PAD.top - PAD.bottom) / H),
+    Math.min((width - PAD.left - PAD.right) / L, (MAX_HEIGHT - PAD.top - PAD.bottom) / zTop),
   );
-  const height = Math.round(PAD.top + PAD.bottom + H * ppi);
+  const height = Math.round(PAD.top + PAD.bottom + zTop * ppi);
   const ox = PAD.left + (width - PAD.left - PAD.right - L * ppi) / 2;
   const X = (x: number) => ox + x * ppi;
-  const Y = (z: number) => PAD.top + (H - z) * ppi;
+  const Y = (z: number) => PAD.top + (zTop - z) * ppi;
 
   const rect = (m: Member, x: number, w: number, key: string) => (
     <rect
@@ -148,7 +150,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing 
         {showSheathing && <SheathingOverlay framing={framing} fmt={fmt} X={X} Y={Y} />}
 
         {/* overall length */}
-        <HDim x1={X(0)} x2={X(L)} y={Y(H) - 30} label={fmt(L)} ext={Y(H)} />
+        <HDim x1={X(0)} x2={X(L)} y={Y(zTop) - 30} label={fmt(L)} ext={Y(H)} />
         {/* overall height and stud length */}
         <VDim x={X(0) - 70} y1={Y(H)} y2={Y(0)} label={`WALL ${fmt(H)}`} ext={X(0)} rotate />
         <VDim x={X(0) - 36} y1={Y(plateBottom)} y2={Y(T)} label={`STUD ${fmt(studLength)}`} ext={X(0)} rotate />
@@ -268,26 +270,42 @@ function SheathingOverlay({ framing, fmt, X, Y }: SheathingProps) {
   const { length: L, height: H } = wall;
   const left = -sh.extLeft;
   const right = L + sh.extRight;
-  const tickY = Y(H) - 48;
-  const chain = [0, ...sh.horizontalSeams];
+  const top = sh.top;
+  const tickY = Y(Math.max(H, top)) - 48;
+  // Seams, then the wall top and the sheathing top, measured up from the floor.
+  const chain = [0, ...sh.horizontalSeams, ...(top > H ? [H, top] : [top])];
   const dimX = X(right) + 28;
   const cornerTitle = (ext: number, end: string) =>
     `Sheathing runs ${fmt(ext)} past the ${end} end of the framing to the outside corner`;
 
   return (
     <g className="sheath">
+      {/* sheathing above the top plate, and its top edge */}
+      {top > H && (
+        <>
+          <rect className="sh-above" x={X(left)} y={Y(top)} width={X(right) - X(left)} height={Y(H) - Y(top)} />
+          {sh.extLeft === 0 && <line className="sh-edge" x1={X(0)} y1={Y(top)} x2={X(0)} y2={Y(H)} />}
+          {sh.extRight === 0 && <line className="sh-edge" x1={X(L)} y1={Y(top)} x2={X(L)} y2={Y(H)} />}
+        </>
+      )}
+      <line className="sh-top" x1={X(left)} y1={Y(top)} x2={X(right)} y2={Y(top)}>
+        <title>{`Top of sheathing ${fmt(top)} from the floor${top > H ? `, ${fmt(top - H)} above the top plate` : ''}`}</title>
+      </line>
+      <text className="sh-t halo" x={X(left) + 4} y={Y(top) + (top > H ? -4 : 12)}>
+        {`TOP OF SHEATHING ${fmt(top)}`}
+      </text>
       {sh.extLeft > 0 && (
-        <line className="sh-edge" x1={X(left)} y1={Y(H)} x2={X(left)} y2={Y(0)}>
+        <line className="sh-edge" x1={X(left)} y1={Y(top)} x2={X(left)} y2={Y(0)}>
           <title>{cornerTitle(sh.extLeft, 'left')}</title>
         </line>
       )}
       {sh.extRight > 0 && (
-        <line className="sh-edge" x1={X(right)} y1={Y(H)} x2={X(right)} y2={Y(0)}>
+        <line className="sh-edge" x1={X(right)} y1={Y(top)} x2={X(right)} y2={Y(0)}>
           <title>{cornerTitle(sh.extRight, 'right')}</title>
         </line>
       )}
       {sh.verticalSeams.map((s) => (
-        <line key={`vs${s.x}`} className="sh-seam" x1={X(s.x)} y1={Y(H)} x2={X(s.x)} y2={Y(0)} />
+        <line key={`vs${s.x}`} className="sh-seam" x1={X(s.x)} y1={Y(Math.max(H, top))} x2={X(s.x)} y2={Y(0)} />
       ))}
       {sh.horizontalSeams.map((z) => (
         <line key={`hs${z}`} className="sh-seam" x1={X(left)} y1={Y(z)} x2={X(right)} y2={Y(z)} />

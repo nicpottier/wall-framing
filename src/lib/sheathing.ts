@@ -58,6 +58,8 @@ export interface SheathingLayout {
   verticalSeams: SeamMark[];
   /** Heights of horizontal seams within the wall. */
   horizontalSeams: number[];
+  /** Top edge of the panel row that covers the top of the wall. */
+  top: number;
 }
 
 const EPS = 1e-6;
@@ -94,5 +96,8 @@ export function sheathingLayout(wall: {
     if (z > EPS) horizontalSeams.push(z);
   }
 
-  return { panel, extLeft, extRight, extOrigin, verticalSeams, horizontalSeams };
+  // Rows stack up from the start height until one reaches the top of the wall.
+  const top = s.startHeight + Math.max(1, Math.ceil((H - s.startHeight - EPS) / panel.height)) * panel.height;
+
+  return { panel, extLeft, extRight, extOrigin, verticalSeams, horizontalSeams, top };
 }

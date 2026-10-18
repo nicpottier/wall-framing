@@ -655,6 +655,13 @@ svg.focus .m:not(.hl) {
   stroke-dasharray: 9 4;
   pointer-events: none;
 }
+.sheath .sh-top {
+  stroke: var(--sheath);
+  stroke-width: 2;
+}
+.sheath .sh-above {
+  fill: color-mix(in srgb, var(--sheath) 7%, transparent);
+}
 .sheath .sh-edge {
   stroke: var(--sheath);
   stroke-width: 1.2;
