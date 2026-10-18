@@ -440,11 +440,17 @@ input.invalid {
 .sheet-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
   gap: 6px 16px;
   padding: 14px 18px 10px;
   border-bottom: 1px solid var(--line-2);
+}
+.sheet-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 .sheet-head h1 {
   margin: 0;

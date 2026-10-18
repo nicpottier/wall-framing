@@ -4,6 +4,9 @@ import { T } from '../lib/lumber';
 import { toFraction, type Formatter } from '../lib/units';
 import { HDim, VDim, textWidth } from './Dimensions';
 
+/** standing: elevation from outside. deck: lying on the subfloor before lifting, rotated 180°. */
+export type WallView = 'standing' | 'deck';
+
 interface Props {
   framing: Framing;
   fmt: Formatter;
@@ -11,14 +14,65 @@ interface Props {
   onHighlight: (group: string | null) => void;
   /** Overlay sheathing seams and their dimensions. */
   showSheathing: boolean;
+  view: WallView;
 }
 
-const PAD = { left: 108, right: 96, top: 92, bottom: 100 };
+/** Margins around the wall, named by wall side so they follow it when the view flips. */
+const PAD = { start: 108, end: 96, top: 92, bottom: 100 };
 const MIN_WIDTH = 720;
 const MAX_HEIGHT = 620;
 
-function useWidth<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
+type Side = 'left' | 'right';
+type Dir = 1 | -1;
+
+/** Wall coordinates (x from the left end, z up from the floor) to screen pixels for a view. */
+interface ViewMap {
+  X: (x: number) => number;
+  Y: (z: number) => number;
+  ppi: number;
+  /** Screen direction of increasing x: +1 standing, -1 on the deck. */
+  sx: Dir;
+  /** Screen direction moving out past the bottom plate: +1 standing (down), -1 on the deck (up). */
+  bt: Dir;
+  /** Screen rectangle for a wall-space box. */
+  box: (x: number, z: number, w: number, h: number) => { x: number; y: number; width: number; height: number };
+  /** Maps a side as seen standing to the screen side in this view. */
+  side: (s: Side) => Side;
+  /** Screen x of the wall's left-hand edge on screen. */
+  left: number;
+  /**
+   * Baseline for text whose glyphs sit between `near` and `far` px from `edge` in direction `dir`,
+   * so labels mirror cleanly instead of overlapping what they label.
+   */
+  textAt: (edge: number, near: number, far: number, dir: Dir) => number;
+  /** Arrow pointing away from the end the layout is pulled from. */
+  arrow: string;
+}
+
+function makeView(flipped: boolean, ox: number, padTop: number, ppi: number, L: number, zTop: number, layoutFrom: Side): ViewMap {
+  const X = (x: number) => ox + (flipped ? L - x : x) * ppi;
+  const Y = (z: number) => padTop + (flipped ? z : zTop - z) * ppi;
+  return {
+    X,
+    Y,
+    ppi,
+    sx: flipped ? -1 : 1,
+    bt: flipped ? -1 : 1,
+    box: (x, z, w, h) => ({
+      x: Math.min(X(x), X(x + w)),
+      y: Math.min(Y(z), Y(z + h)),
+      width: w * ppi,
+      height: h * ppi,
+    }),
+    side: (s) => (flipped ? (s === 'left' ? 'right' : 'left') : s),
+    left: Math.min(X(0), X(L)),
+    textAt: (edge, near, far, dir) => (dir > 0 ? edge + far : edge - near),
+    arrow: (layoutFrom === 'left') !== flipped ? '→' : '←',
+  };
+}
+
+function useWidth<E extends HTMLElement>() {
+  const ref = useRef<E>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
     const el = ref.current;
@@ -42,31 +96,30 @@ function widestBay(lo: number, hi: number, xs: number[]) {
   return best.c;
 }
 
-export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing }: Props) {
+export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing, view }: Props) {
   const [wrapRef, measured] = useWidth<HTMLDivElement>();
   const { wall, plateBottom, studLength, members, openings, layout } = framing;
   const { length: L, height: H } = wall;
+  const flipped = view === 'deck';
 
   // Drawing extends above the wall when sheathing runs past the top plate.
   const zTop = showSheathing ? Math.max(H, framing.sheathing.top) : H;
+  const padL = flipped ? PAD.end : PAD.start;
+  const padR = flipped ? PAD.start : PAD.end;
+  const padT = flipped ? PAD.bottom : PAD.top;
+  const padB = flipped ? PAD.top : PAD.bottom;
   const width = Math.max(measured, MIN_WIDTH);
-  const ppi = Math.max(
-    0.5,
-    Math.min((width - PAD.left - PAD.right) / L, (MAX_HEIGHT - PAD.top - PAD.bottom) / zTop),
-  );
-  const height = Math.round(PAD.top + PAD.bottom + zTop * ppi);
-  const ox = PAD.left + (width - PAD.left - PAD.right - L * ppi) / 2;
-  const X = (x: number) => ox + x * ppi;
-  const Y = (z: number) => PAD.top + (zTop - z) * ppi;
+  const ppi = Math.max(0.5, Math.min((width - padL - padR) / L, (MAX_HEIGHT - padT - padB) / zTop));
+  const height = Math.round(padT + padB + zTop * ppi);
+  const ox = padL + (width - padL - padR - L * ppi) / 2;
+  const v = makeView(flipped, ox, padT, ppi, L, zTop, wall.layoutFrom);
+  const { X, Y, sx, bt } = v;
 
   const rect = (m: Member, x: number, w: number, key: string) => (
     <rect
       key={key}
       className={`m m-${m.role}${highlight === m.group ? ' hl' : ''}`}
-      x={X(x)}
-      y={Y(m.z + m.h)}
-      width={w * ppi}
-      height={m.h * ppi}
+      {...v.box(x, m.z, w, m.h)}
       onMouseEnter={() => onHighlight(m.group)}
     >
       <title>{`${ROLES[m.role].name}${m.isEnd ? ' (end)' : ''} · ${m.size} × ${fmt(m.length)}`}</title>
@@ -87,10 +140,10 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing 
     return els;
   });
 
-  // Chain dimensions to rough-opening edges.
+  // Rows past the bottom plate: layout marks, then chain dimensions to rough-opening edges.
   const pts = [0, ...[...openings].sort((a, b) => a.spec.x - b.spec.x).flatMap((o) => [o.spec.x, o.spec.x + o.spec.width]), L];
-  const chainY = Y(0) + 62;
-  const layoutY = Y(0) + 14;
+  const layoutY = Y(0) + 14 * bt;
+  const chainY = Y(0) + 62 * bt;
   const lastMark = layout.at(-1);
   const layoutStep = lastMark && wall.spacing * ppi < textWidth(fmt(lastMark.distance)) + 10 ? 2 : 1;
 
@@ -102,7 +155,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing 
         height={height}
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="Wall framing elevation"
+        aria-label={flipped ? 'Wall framing as laid out on the deck' : 'Wall framing elevation'}
         className={highlight ? 'focus' : undefined}
         onMouseLeave={() => onHighlight(null)}
       >
@@ -119,7 +172,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing 
         <g onMouseLeave={() => onHighlight(null)}>{memberEls}</g>
 
         {cuts.map(([c0, c1]) => (
-          <rect key={`cut${c0}`} className="cutout" x={X(c0)} y={Y(T)} width={(c1 - c0) * ppi} height={T * ppi} />
+          <rect key={`cut${c0}`} className="cutout" {...v.box(c0, 0, c1 - c0, T)} />
         ))}
 
         {/* header callouts */}
@@ -136,34 +189,26 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing 
           })}
 
         {openings.map((o) => (
-          <OpeningOverlay
-            key={o.spec.id}
-            o={o}
-            framing={framing}
-            fmt={fmt}
-            X={X}
-            Y={Y}
-            plateBottom={plateBottom}
-          />
+          <OpeningOverlay key={o.spec.id} o={o} framing={framing} fmt={fmt} v={v} plateBottom={plateBottom} />
         ))}
 
-        {showSheathing && <SheathingOverlay framing={framing} fmt={fmt} X={X} Y={Y} />}
+        {showSheathing && <SheathingOverlay framing={framing} fmt={fmt} v={v} />}
 
         {/* overall length */}
-        <HDim x1={X(0)} x2={X(L)} y={Y(zTop) - 30} label={fmt(L)} ext={Y(H)} />
-        {/* overall height and stud length */}
-        <VDim x={X(0) - 70} y1={Y(H)} y2={Y(0)} label={`WALL ${fmt(H)}`} ext={X(0)} rotate />
-        <VDim x={X(0) - 36} y1={Y(plateBottom)} y2={Y(T)} label={`STUD ${fmt(studLength)}`} ext={X(0)} rotate />
+        <HDim x1={X(0)} x2={X(L)} y={Y(zTop) - 30 * bt} label={fmt(L)} ext={Y(H)} />
+        {/* overall height and stud length, off the wall's left end */}
+        <VDim x={X(0) - 70 * sx} y1={Y(H)} y2={Y(0)} label={`WALL ${fmt(H)}`} ext={X(0)} side={v.side('left')} rotate />
+        <VDim x={X(0) - 36 * sx} y1={Y(plateBottom)} y2={Y(T)} label={`STUD ${fmt(studLength)}`} ext={X(0)} side={v.side('left')} rotate />
 
         {/* layout marks */}
-        <text className="cap" x={X(0) - 10} y={layoutY + 15} textAnchor="end">
-          {`LAYOUT ${wall.layoutFrom === 'right' ? '←' : '→'}`}
+        <text className="cap" x={v.left - 10} y={v.textAt(layoutY, 7, 15, bt)} textAnchor="end">
+          {`LAYOUT ${v.arrow}`}
         </text>
         {layout.map(({ center, distance }, i) => (
           <g key={`lay${i}`}>
-            <line className="lay-k" x1={X(center)} y1={layoutY} x2={X(center)} y2={layoutY + 6} />
+            <line className="lay-k" x1={X(center)} y1={layoutY} x2={X(center)} y2={layoutY + 6 * bt} />
             {(i + 1) % layoutStep === 0 && (
-              <text className="lay-t" x={X(center)} y={layoutY + 18} textAnchor="middle">
+              <text className="lay-t" x={X(center)} y={v.textAt(layoutY, 10, 18, bt)} textAnchor="middle">
                 {fmt(distance)}
               </text>
             )}
@@ -171,13 +216,13 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing 
         ))}
 
         {/* chain dimensions to rough openings */}
-        <text className="cap" x={X(0) - 10} y={chainY + 4} textAnchor="end">
+        <text className="cap" x={v.left - 10} y={chainY + 4} textAnchor="end">
           TO R.O.
         </text>
         {pts.slice(1).map((p, i) => {
           const prev = pts[i]!;
           if (p - prev <= 1e-6) return null;
-          return <HDim key={`ch${i}`} x1={X(prev)} x2={X(p)} y={chainY} label={fmt(p - prev)} ext={Y(0) + 40} />;
+          return <HDim key={`ch${i}`} x1={X(prev)} x2={X(p)} y={chainY} label={fmt(p - prev)} ext={Y(0) + 40 * bt} />;
         })}
       </svg>
     </div>
@@ -188,24 +233,26 @@ interface OverlayProps {
   o: OpeningFrame;
   framing: Framing;
   fmt: Formatter;
-  X: (x: number) => number;
-  Y: (z: number) => number;
+  v: ViewMap;
   plateBottom: number;
 }
 
-function OpeningOverlay({ o, framing, fmt, X, Y, plateBottom }: OverlayProps) {
+function OpeningOverlay({ o, framing, fmt, v, plateBottom }: OverlayProps) {
   const { spec } = o;
-  const x0 = X(spec.x);
-  const x1 = X(spec.x + spec.width);
-  const y0 = Y(o.roTop);
-  const y1 = Y(o.roBottom);
+  const { X, Y, sx, bt } = v;
+  // Screen x of the rough opening's left and right edges as seen standing.
+  const xl = X(spec.x);
+  const xr = X(spec.x + spec.width);
+  const yTop = Y(o.roTop);
+  const yBot = Y(o.roBottom);
   const err = o.hasError ? ' err' : '';
-  const cx = (x0 + x1) / 2;
-  const cy = (y0 + y1) / 2;
+  const cx = (xl + xr) / 2;
+  const cy = (yTop + yBot) / 2;
+  const roWidthPx = Math.abs(xr - xl);
   const title = `${spec.label} · ${spec.type.toUpperCase()}`;
   const ro = `RO ${toFraction(spec.width)} × ${toFraction(spec.height)}`;
   const full = spec.unit ? `${toFraction(spec.unit.width)} × ${toFraction(spec.unit.height)} unit · ${ro}` : ro;
-  const size = x1 - x0 > textWidth(full) + 50 ? full : ro;
+  const size = roWidthPx > textWidth(full) + 50 ? full : ro;
 
   const ownMembers = framing.members.filter((m) => m.openingId === spec.id);
   const tops = ownMembers.filter((m) => m.role === 'crippleTop');
@@ -215,23 +262,24 @@ function OpeningOverlay({ o, framing, fmt, X, Y, plateBottom }: OverlayProps) {
 
   return (
     <g>
-      <rect className={`ro${err}`} x={x0} y={y0} width={x1 - x0} height={y1 - y0} />
-      <line className="ro-x" x1={x0} y1={y0} x2={x1} y2={y1} />
-      <line className="ro-x" x1={x1} y1={y0} x2={x0} y2={y1} />
+      <rect className={`ro${err}`} {...v.box(spec.x, o.roBottom, spec.width, spec.height)} />
+      <line className="ro-x" x1={xl} y1={yTop} x2={xr} y2={yBot} />
+      <line className="ro-x" x1={xr} y1={yTop} x2={xl} y2={yBot} />
       <text className={`ro-t halo${err}`} x={cx} y={cy - 2} textAnchor="middle">
         {title}
       </text>
-      {x1 - x0 > textWidth(size) + 50 && (
+      {roWidthPx > textWidth(size) + 50 && (
         <text className={`ro-s halo${err}`} x={cx} y={cy + 13} textAnchor="middle">
           {size}
         </text>
       )}
 
-      <HDim x1={x0} x2={x1} y={y0 + 16} label={fmt(spec.width)} />
-      <VDim x={x1 - 11} y1={y0} y2={y1} label={`RO ${fmt(spec.height)}`} side="left" />
-      <VDim x={x0 + 11} y1={y0} y2={Y(T)} label={`JACK ${fmt(o.roTop - T)}`} side="right" />
+      {/* inside the opening, just under the header */}
+      <HDim x1={xl} x2={xr} y={yTop + 16 * bt} label={fmt(spec.width)} />
+      <VDim x={xr - 11 * sx} y1={yTop} y2={yBot} label={`RO ${fmt(spec.height)}`} side={v.side('left')} />
+      <VDim x={xl + 11 * sx} y1={yTop} y2={Y(T)} label={`JACK ${fmt(o.roTop - T)}`} side={v.side('right')} />
       {spec.type === 'window' && (
-        <VDim x={x1 - 11} y1={y1} y2={Y(0)} label={`SILL ${fmt(spec.sill)}`} side="left" />
+        <VDim x={xr - 11 * sx} y1={yBot} y2={Y(0)} label={`SILL ${fmt(spec.sill)}`} side={v.side('left')} />
       )}
 
       {(tops.length > 0 || hasFill) && (
@@ -240,7 +288,7 @@ function OpeningOverlay({ o, framing, fmt, X, Y, plateBottom }: OverlayProps) {
           y1={Y(plateBottom)}
           y2={Y(o.headerTop)}
           label={`${tops.length ? 'CRIPPLE' : 'FILL'} ${fmt(o.gapAbove)}`}
-          side="right"
+          side={v.side('right')}
           rotate={false}
         />
       )}
@@ -250,7 +298,7 @@ function OpeningOverlay({ o, framing, fmt, X, Y, plateBottom }: OverlayProps) {
           y1={Y(sillBottom)}
           y2={Y(T)}
           label={`CRIPPLE ${fmt(o.crippleBelow)}`}
-          side="right"
+          side={v.side('right')}
         />
       )}
     </g>
@@ -260,21 +308,22 @@ function OpeningOverlay({ o, framing, fmt, X, Y, plateBottom }: OverlayProps) {
 interface SheathingProps {
   framing: Framing;
   fmt: Formatter;
-  X: (x: number) => number;
-  Y: (z: number) => number;
+  v: ViewMap;
 }
 
-/** Panel seams over the framing, seam positions along the top, and seam heights on the right. */
-function SheathingOverlay({ framing, fmt, X, Y }: SheathingProps) {
+/** Panel seams over the framing, seam positions past the top plate, and seam heights off the right end. */
+function SheathingOverlay({ framing, fmt, v }: SheathingProps) {
   const { wall, sheathing: sh } = framing;
   const { length: L, height: H } = wall;
+  const { X, Y, sx, bt } = v;
+  const out: Dir = bt === 1 ? -1 : 1; // screen direction out past the top
   const left = -sh.extLeft;
   const right = L + sh.extRight;
   const top = sh.top;
-  const tickY = Y(Math.max(H, top)) - 48;
+  const tickY = Y(Math.max(H, top)) + 48 * out;
   // Seams, then the wall top and the sheathing top, measured up from the floor.
   const chain = [0, ...sh.horizontalSeams, ...(top > H ? [H, top] : [top])];
-  const dimX = X(right) + 28;
+  const dimX = X(right) + 28 * sx;
   const cornerTitle = (ext: number, end: string) =>
     `Sheathing runs ${fmt(ext)} past the ${end} end of the framing to the outside corner`;
 
@@ -283,7 +332,7 @@ function SheathingOverlay({ framing, fmt, X, Y }: SheathingProps) {
       {/* sheathing above the top plate, and its top edge */}
       {top > H && (
         <>
-          <rect className="sh-above" x={X(left)} y={Y(top)} width={X(right) - X(left)} height={Y(H) - Y(top)} />
+          <rect className="sh-above" {...v.box(left, H, right - left, top - H)} />
           {sh.extLeft === 0 && <line className="sh-edge" x1={X(0)} y1={Y(top)} x2={X(0)} y2={Y(H)} />}
           {sh.extRight === 0 && <line className="sh-edge" x1={X(L)} y1={Y(top)} x2={X(L)} y2={Y(H)} />}
         </>
@@ -291,7 +340,7 @@ function SheathingOverlay({ framing, fmt, X, Y }: SheathingProps) {
       <line className="sh-top" x1={X(left)} y1={Y(top)} x2={X(right)} y2={Y(top)}>
         <title>{`Top of sheathing ${fmt(top)} from the floor${top > H ? `, ${fmt(top - H)} above the top plate` : ''}`}</title>
       </line>
-      <text className="sh-t halo" x={X(left) + 4} y={Y(top) + (top > H ? -4 : 12)}>
+      <text className="sh-t halo" x={Math.min(X(left), X(right)) + 4} y={v.textAt(Y(top), 4, 12, top > H ? out : bt)}>
         {`TOP OF SHEATHING ${fmt(top)}`}
       </text>
       {sh.extLeft > 0 && (
@@ -312,21 +361,30 @@ function SheathingOverlay({ framing, fmt, X, Y }: SheathingProps) {
       ))}
 
       {/* seam positions, measured from the layout end */}
-      <text className="cap" x={X(0) - 10} y={tickY + 4} textAnchor="end">
-        {`SHEATHING ${wall.layoutFrom === 'right' ? '←' : '→'}`}
+      <text className="cap" x={v.left - 10} y={tickY + 4} textAnchor="end">
+        {`SHEATHING ${v.arrow}`}
       </text>
       {sh.verticalSeams.map((s) => (
         <g key={`vt${s.x}`}>
-          <line className="sh-k" x1={X(s.x)} y1={tickY + 2} x2={X(s.x)} y2={tickY + 8} />
-          <text className="sh-t halo" x={X(s.x)} y={tickY - 2} textAnchor="middle">
+          <line className="sh-k" x1={X(s.x)} y1={tickY + 2 * bt} x2={X(s.x)} y2={tickY + 8 * bt} />
+          <text className="sh-t halo" x={X(s.x)} y={v.textAt(tickY, 2, 10, out)} textAnchor="middle">
             {fmt(s.distance)}
           </text>
         </g>
       ))}
 
-      {/* seam heights from the floor */}
+      {/* seam heights from the floor, off the wall's right end */}
       {chain.slice(1).map((z, i) => (
-        <VDim key={`hd${z}`} className="sheath-dim" x={dimX} y1={Y(z)} y2={Y(chain[i]!)} label={fmt(z - chain[i]!)} ext={X(right)} side="right" />
+        <VDim
+          key={`hd${z}`}
+          className="sheath-dim"
+          x={dimX}
+          y1={Y(z)}
+          y2={Y(chain[i]!)}
+          label={fmt(z - chain[i]!)}
+          ext={X(right)}
+          side={v.side('right')}
+        />
       ))}
     </g>
   );

@@ -48,6 +48,11 @@ The data flow is one way: **form text → `toWallSpec` → `computeFraming` → 
 - At doors, the bottom plate is cut out between the jacks after the wall is stood.
 - Headers are 2 plies with a rigid-foam core, or 3 plies with 1" foam, to fill the 5 1/2" wall.
 
+### Views
+
+- **Standing**: elevation from outside.
+- **On the deck**: the wall as it's framed lying on the subfloor before lifting, sheathing side up. It's the elevation rotated 180°: bottom plate at the top (the deck edge it pivots on), ends swapped. Text stays upright and dimensions follow their side of the wall.
+
 ### Sheathing (4x8)
 
 - Panels run vertical (4' wide, 8' tall) or horizontal (8' wide, 4' tall). Sheathing and stud layout are both pulled from the layout end, so panel seams land on studs.

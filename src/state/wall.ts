@@ -50,6 +50,8 @@ export interface WallInput {
   blockSeams: 'yes' | 'no';
   /** Drawing only: show sheathing seams over the framing. */
   showSheathing: 'on' | 'off';
+  /** Drawing only: standing elevation, or as laid out on the deck before lifting. */
+  view: 'standing' | 'deck';
   openings: OpeningInput[];
 }
 
@@ -78,6 +80,7 @@ export const EXAMPLE_WALL: WallInput = {
   seamStuds: 'double',
   blockSeams: 'yes',
   showSheathing: 'on',
+  view: 'standing',
   openings: [
     { id: 'o1', type: 'window', label: 'W1', from: 'left', offset: '30', width: '45', height: '43 1/2', headHeight: '', header: 'auto', jacksPerSide: 'auto' },
     { id: 'o2', type: 'door', label: 'D1', from: 'right', offset: '50', width: '36', height: '80', headHeight: '', header: 'auto', jacksPerSide: 'auto' },

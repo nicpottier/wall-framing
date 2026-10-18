@@ -7,6 +7,7 @@ import { RoughOpeningSettings, SheathingSettings, WallSettings } from './compone
 import { OpeningsEditor } from './components/OpeningsEditor';
 import { Checks, CutList, Legend, TitleBlock } from './components/Report';
 import { BrandMark } from './components/BrandMark';
+import { Segmented } from './components/controls';
 
 export default function App() {
   const [wall, dispatch] = useReducer(wallReducer, undefined, loadWall);
@@ -55,12 +56,25 @@ export default function App() {
         <main className="main">
           <section className="sheet" aria-labelledby="sheet-title">
             <div className="sheet-head">
-              <h1 id="sheet-title">{wall.name || 'Wall elevation'}</h1>
-              <span className="sub">2x6 @ {wall.spacing}" O.C. · elevation, not to scale</span>
+              <div className="sheet-title">
+                <h1 id="sheet-title">{wall.name || 'Wall elevation'}</h1>
+                <span className="sub">
+                  {wall.view === 'deck'
+                    ? `On the deck, sheathing side up · bottom plate at the top, at the deck edge · 2x6 @ ${wall.spacing}" O.C.`
+                    : `Elevation from outside · 2x6 @ ${wall.spacing}" O.C. · not to scale`}
+                </span>
+              </div>
+              <Segmented
+                bare
+                label="View"
+                value={wall.view}
+                options={[['standing', 'Standing'], ['deck', 'On the deck']]}
+                onChange={(value) => dispatch({ type: 'set', key: 'view', value })}
+              />
             </div>
             {framing ? (
               <>
-                <Elevation framing={framing} fmt={fmt} highlight={highlight} onHighlight={setHighlight} showSheathing={wall.showSheathing === 'on'} />
+                <Elevation framing={framing} fmt={fmt} highlight={highlight} onHighlight={setHighlight} showSheathing={wall.showSheathing === 'on'} view={wall.view} />
                 <div className="sheet-hint">Hover a member to see its size and length.</div>
                 <Legend showSheathing={wall.showSheathing === 'on'} />
                 <TitleBlock framing={framing} name={wall.name} fmt={fmt} />

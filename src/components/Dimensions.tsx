@@ -17,7 +17,9 @@ interface HDimProps {
   className?: string;
 }
 
-export function HDim({ x1, x2, y, label, ext, className }: HDimProps) {
+export function HDim({ x1: a, x2: b, y, label, ext, className }: HDimProps) {
+  const x1 = Math.min(a, b);
+  const x2 = Math.max(a, b);
   const d = ext == null ? 0 : y < ext ? -1 : 1;
   return (
     <g className={className}>
@@ -39,9 +41,8 @@ export function HDim({ x1, x2, y, label, ext, className }: HDimProps) {
 
 interface VDimProps {
   x: number;
-  /** Top, in screen px (smaller y). */
+  /** Ends in screen px, either order. */
   y1: number;
-  /** Bottom, in screen px. */
   y2: number;
   label: string;
   /** x of the object edge to draw extension lines from. */
@@ -53,7 +54,9 @@ interface VDimProps {
   className?: string;
 }
 
-export function VDim({ x, y1, y2, label, ext, side = 'left', rotate = 'auto', className }: VDimProps) {
+export function VDim({ x, y1: a, y2: b, label, ext, side = 'left', rotate = 'auto', className }: VDimProps) {
+  const y1 = Math.min(a, b);
+  const y2 = Math.max(a, b);
   const d = ext == null ? 0 : x < ext ? -1 : 1;
   const mid = (y1 + y2) / 2;
   const rot = rotate === true || (rotate === 'auto' && y2 - y1 > textWidth(label) + 14);
