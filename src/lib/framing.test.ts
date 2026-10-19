@@ -435,3 +435,85 @@ describe('plate steps', () => {
     expect(of(g, 'blocking').some((b) => b.x < 140 && b.x > 96 && b.seamHeight === 108)).toBe(false);
   });
 });
+
+describe('2x4 and unsheathed walls', () => {
+  const f = frame(wall({ studs: '2x4', sheathing: { ...NO_SHEATHING_EFFECTS, enabled: false, startHeight: 12 }, openings: [opening()] }));
+
+  it('cuts every stud and plate from 2x4', () => {
+    expect(of(f, 'stud').every((m) => m.size === '2x4')).toBe(true);
+    expect(of(f, 'plate')[0]!.size).toBe('2x4');
+  });
+
+  it('needs no foam behind a 4x8 header', () => {
+    expect(f.cutList.find((g) => g.role === 'header')!.notes.some((n) => n.includes('foam'))).toBe(false);
+  });
+
+  it('has no seams, seam studs or blocking', () => {
+    expect(f.sheathing.verticalSeams).toEqual([]);
+    expect(of(f, 'seamStud')).toHaveLength(0);
+    expect(of(f, 'blocking')).toHaveLength(0);
+  });
+});
+
+describe('california corners', () => {
+  it('lays a stud flat just past the wall butting in', () => {
+    const f = frame(wall({ california: { left: 5.5, right: 0 } }));
+    const [b, ...rest] = of(f, 'cornerBacker');
+    expect(rest).toHaveLength(0);
+    expect(b).toMatchObject({ x: 5.5, w: 5.5, length: f.studLength });
+  });
+
+  it('works from the right end and moves layout studs out of the way', () => {
+    const f = frame(wall({ california: { left: 0, right: 5.5 } }));
+    expect(of(f, 'cornerBacker')[0]).toMatchObject({ x: 240 - 11, w: 5.5 });
+    expect(of(f, 'stud').some((m) => m.x + m.w > 229 && m.x < 234.5)).toBe(false);
+  });
+
+  it('skips the backer where a king already backs the corner', () => {
+    const f = frame(wall({ california: { left: 5.5, right: 0 }, openings: [opening({ x: 8.5 })] }));
+    expect(of(f, 'cornerBacker')).toHaveLength(0);
+  });
+
+  it('uses a single stud when an opening leaves no room to lay one flat', () => {
+    const f = frame(wall({ california: { left: 5.5, right: 0 }, openings: [opening({ x: 10 })] }));
+    expect(of(f, 'cornerBacker')[0]).toMatchObject({ x: 5.5, w: 1.5 });
+  });
+
+  it('falls back to a note when an opening leaves no room at all', () => {
+    const f = frame(wall({ california: { left: 5.5, right: 0 }, openings: [opening({ x: 9 })] }));
+    expect(of(f, 'cornerBacker')).toHaveLength(0);
+    expect(f.issues.some((i) => i.message.includes('drywall clips'))).toBe(true);
+  });
+});
+
+describe('intersections', () => {
+  it('frames each side of a 2x4 wall with ladder blocking between', () => {
+    const f = frame(wall({ intersections: [{ id: 'i', label: 'Bath', x: 40, width: 3.5 }] }));
+    // Faces at 38 1/4 and 41 3/4; backers leave 3/4" of drywall nailing past each.
+    expect(xs(f, 'partitionStud')).toEqual([36, 42.5]);
+    expect(of(f, 'stud').some((m) => m.layoutCenter === 32)).toBe(true);
+    const ladder = of(f, 'ladder');
+    expect(ladder.length).toBe(3);
+    expect(ladder.every((m) => m.x === 37.5 && m.w === 5)).toBe(true);
+    expect(ladder.map((m) => m.z + m.h / 2)).toEqual([24, 48, 72]);
+    expect(f.intersections[0]!.bay).toEqual([37.5, 42.5]);
+  });
+
+  it('uses a king beside it instead of adding a stud', () => {
+    // W1's right king runs from 79 1/2 to 81.
+    const f = frame(wall({ openings: [opening()], intersections: [{ id: 'i', label: 'P', x: 84, width: 3.5 }] }));
+    expect(xs(f, 'partitionStud')).toEqual([86.5]);
+    expect(f.intersections[0]!.bay).toEqual([81, 86.5]);
+  });
+
+  it('needs nothing more where a post covers it', () => {
+    const f = frame(wall({ posts: [{ id: 'p', label: 'P1', x: 37.25, type: '6x6' }], intersections: [{ id: 'i', label: 'Stub', x: 40, width: 3.5 }] }));
+    expect(of(f, 'partitionStud')).toHaveLength(0);
+    expect(of(f, 'ladder')).toHaveLength(0);
+  });
+
+  it('warns when it meets the wall inside an opening', () => {
+    const f = frame(wall({ openings: [opening()], intersections: [{ id: 'i', label: 'Closet', x: 50, width: 3.5 }] }));
+    expect(f.issues.some((i) => i.level === 'warning' && i.message.startsWith("Closet: meets this wall inside W1's rough opening"))).toBe(true);
+  });
+});

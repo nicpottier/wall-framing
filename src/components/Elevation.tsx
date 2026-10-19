@@ -137,7 +137,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
   const Hmax = framing.maxHeight;
   const orient = ORIENTATION[view];
   const flipped = orient.flipZ;
-  const showSheathing = sheathingOn && !compact;
+  const showSheathing = sheathingOn && !compact && wall.sheathing.enabled !== false;
   const pad = compact ? COMPACT_PAD : PAD;
 
   // Standing, the drawing extends above the wall when sheathing runs past the top plate.
@@ -258,6 +258,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
           )}
 
         {!compact && <PostOverlay framing={framing} fmt={fmt} v={v} />}
+        <IntersectionOverlay framing={framing} fmt={fmt} v={v} compact={compact} />
 
         {openings.map((o) => (
           <OpeningOverlay key={o.spec.id} o={o} framing={framing} fmt={fmt} v={v} compact={compact} />
@@ -547,6 +548,32 @@ function SheathingOverlay({ framing, fmt, v, aboveWall }: SheathingProps) {
           side={v.side('right')}
         />
       ))}
+    </g>
+  );
+}
+
+/** Walls butting in: their footprint against this wall, with a label. */
+function IntersectionOverlay({ framing, fmt, v, compact }: { framing: Framing; fmt: Formatter; v: ViewMap; compact: boolean }) {
+  const { X, Y } = v;
+  return (
+    <g>
+      {framing.intersections.map((it) => {
+        const sec = framing.sections.find((s) => (it.x0 + it.x1) / 2 <= s.x1 + 1e-6) ?? framing.sections[0]!;
+        const cx = X((it.x0 + it.x1) / 2);
+        const cy = Y(sec.plateBottom * 0.38);
+        return (
+          <g key={it.spec.id}>
+            <rect className={`tee${it.hasError ? ' err' : ''}`} {...v.box(it.x0, T, it.x1 - it.x0, sec.plateBottom - T)}>
+              <title>{`${it.spec.label} butts in here: ${fmt(it.x0)} – ${fmt(it.x1)} from the left end`}</title>
+            </rect>
+            {!compact && (
+              <text className="post-t halo" x={cx} y={cy} textAnchor="middle" transform={`rotate(-90 ${cx} ${cy})`} dy={4}>
+                {`${it.spec.label} · ${toFraction(it.spec.width)}" WALL`}
+              </text>
+            )}
+          </g>
+        );
+      })}
     </g>
   );
 }

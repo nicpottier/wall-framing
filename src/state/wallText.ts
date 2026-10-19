@@ -12,6 +12,8 @@
  *   - P1: 6x6, 8-0 from right
  *   ### Balloon framing
  *   - Stair: 10-1 7/8 tall, 12-6 to 24-1 from left
+ *   ### Intersections
+ *   - Bath: 2x4 wall, 7-2 from left
  *
  * Headings split the file into project, defaults and walls; list items are settings, openings, posts
  * or tall stretches; any other text is kept as notes. Opening and post positions are to the
@@ -25,6 +27,7 @@ import {
   parseSize,
   roughOpening,
   type OpeningInput,
+  type IntersectionInput,
   type PostInput,
   type TallInput,
   type WallInput,
@@ -93,9 +96,10 @@ const allowance =
 const SETTINGS: Record<string, SettingParser> = {
   height: lengthSetting('height', 'height'),
   studs: (v) => {
-    const m = words(v).match(/^(?:2x6\s*)?(?:@\s*)?(\d+(?:\.\d+)?)(?:\s*(?:"|in|o\.?c\.?))*$/);
-    const spacing = m?.[1];
-    return spacing && ['12', '16', '19.2', '24'].includes(spacing) ? { spacing } : 'studs must be 2x6 @ 12, 16, 19.2 or 24';
+    const m = words(v).match(/^(?:(2x4|2x6)\s*)?(?:@\s*)?(\d+(?:\.\d+)?)(?:\s*(?:"|in|o\.?c\.?))*$/);
+    const spacing = m?.[2];
+    if (!spacing || !['12', '16', '19.2', '24'].includes(spacing)) return 'studs must be 2x4 or 2x6 @ 12, 16, 19.2 or 24';
+    return m[1] ? { spacing, studSize: m[1] as '2x4' | '2x6' } : { spacing };
   },
   layout: (v) => {
     const m = words(v).match(/^(?:from )?(left|right)$/);
@@ -131,7 +135,8 @@ const SETTINGS: Record<string, SettingParser> = {
   'window ro': allowance('windowRoWidth', 'windowRoHeight'),
   'door ro': allowance('doorRoWidth', 'doorRoHeight'),
   sheathing: (v) => {
-    const out: Partial<WallSettings> = {};
+    if (/^(none|no)$/.test(words(v))) return { sheathed: 'no' };
+    const out: Partial<WallSettings> = { sheathed: 'yes' };
     for (const c of clauses(v)) {
       const w = words(c);
       let m: RegExpMatchArray | null;
@@ -142,6 +147,18 @@ const SETTINGS: Record<string, SettingParser> = {
       else if (/^block(ed)? seams$/.test(w)) out.blockSeams = 'yes';
       else if (/^no block(ing)?$|^unblocked seams$/.test(w)) out.blockSeams = 'no';
       else return `unknown sheathing option "${c}"`;
+    }
+    return out;
+  },
+  'california corners': (v) => {
+    const out: Partial<WallSettings> = { californiaLeft: 'none', californiaRight: 'none' };
+    if (words(v) === 'none') return out;
+    for (const c of clauses(v)) {
+      const m = words(c).match(/^(left|right|both)(?: (2x4|2x6))?$/);
+      if (!m) return 'write california corners like "left 2x6, right 2x4" (the wall butting in), "both" or "none"';
+      const size = (m[2] ?? '2x6') as '2x4' | '2x6';
+      if (m[1] !== 'right') out.californiaLeft = size;
+      if (m[1] !== 'left') out.californiaRight = size;
     }
     return out;
   },
@@ -159,7 +176,7 @@ SETTINGS.spacing = SETTINGS.studs!;
 
 /** Text for each setting, in the order they're written out. */
 const FORMAT: [string, (s: WallSettings) => string][] = [
-  ['studs', (s) => `2x6 @ ${s.spacing}`],
+  ['studs', (s) => `${s.studSize} @ ${s.spacing}`],
   ['height', (s) => s.height],
   ['layout', (s) => `from ${s.layoutFrom}`],
   ['top plate', (s) => (s.topPlates === '1' ? 'single' : 'double')],
@@ -172,15 +189,23 @@ const FORMAT: [string, (s: WallSettings) => string][] = [
   [
     'sheathing',
     (s) =>
-      [
-        s.sheathingOrientation,
-        `${inchText(s.sheathingThickness)} thick`,
-        `start ${s.sheathingStart}`,
-        `${s.seamStuds} seam studs`,
-        s.blockSeams === 'yes' ? 'block seams' : 'no blocking',
-      ].join(', '),
+      s.sheathed === 'no'
+        ? 'none'
+        : [
+            s.sheathingOrientation,
+            `${inchText(s.sheathingThickness)} thick`,
+            `start ${s.sheathingStart}`,
+            `${s.seamStuds} seam studs`,
+            s.blockSeams === 'yes' ? 'block seams' : 'no blocking',
+          ].join(', '),
   ],
   ['corners', (s) => `left ${s.cornerLeft}, right ${s.cornerRight}`],
+  [
+    'california corners',
+    (s) =>
+      [s.californiaLeft !== 'none' ? `left ${s.californiaLeft}` : '', s.californiaRight !== 'none' ? `right ${s.californiaRight}` : ''].filter(Boolean).join(', ') ||
+      'none',
+  ],
 ];
 
 // ---------- Parsing ----------
@@ -213,7 +238,7 @@ export function parseProjectText(text: string): ParseResult {
   const projectNotes: string[] = [];
   const defaults: WallSettings = { ...DEFAULT_SETTINGS };
   const walls: WallDraft[] = [];
-  let section: 'none' | 'defaults' | 'wall' | 'openings' | 'posts' | 'tall' = 'none';
+  let section: 'none' | 'defaults' | 'wall' | 'openings' | 'posts' | 'tall' | 'intersections' = 'none';
   let notesTarget: string[] = projectNotes;
   const wallNotes = new Map<WallDraft, string[]>();
   const current = () => walls[walls.length - 1]!;
@@ -239,7 +264,7 @@ export function parseProjectText(text: string): ParseResult {
         notesTarget = projectNotes;
       } else {
         const draft: WallDraft = {
-          wall: { ...defaults, id: `w${walls.length + 1}`, name, length: '', notes: '', openings: [], posts: [], tall: [] },
+          wall: { ...defaults, id: `w${walls.length + 1}`, name, length: '', notes: '', openings: [], posts: [], tall: [], intersections: [] },
           line,
           hasLength: false,
           pending: [],
@@ -254,9 +279,21 @@ export function parseProjectText(text: string): ParseResult {
     }
     if ((m = t.match(/^###\s+(.+)$/))) {
       const name = words(m[1]!);
-      const sub = name === 'openings' ? 'openings' : name === 'posts' ? 'posts' : /^(balloon( framing)?|tall (sections|stretches))$/.test(name) ? 'tall' : null;
+      const sub =
+        name === 'openings'
+          ? 'openings'
+          : name === 'posts'
+            ? 'posts'
+            : /^(balloon( framing)?|tall (sections|stretches))$/.test(name)
+              ? 'tall'
+              : /^(intersections|intersecting walls|tees)$/.test(name)
+                ? 'intersections'
+                : null;
       if (!walls.length || !sub) {
-        err(line, walls.length ? `Unknown section "${m[1]}". Walls have ### Openings, ### Posts and ### Balloon framing.` : `### ${m[1]} must be inside a wall.`);
+        err(
+          line,
+          walls.length ? `Unknown section "${m[1]}". Walls have ### Openings, ### Posts, ### Balloon framing and ### Intersections.` : `### ${m[1]} must be inside a wall.`,
+        );
         return;
       }
       section = sub;
@@ -268,6 +305,7 @@ export function parseProjectText(text: string): ParseResult {
       if (section === 'openings') return parseOpening(item, line, current(), err);
       if (section === 'posts') return parsePost(item, line, current(), err);
       if (section === 'tall') return parseTall(item, line, current(), err);
+      if (section === 'intersections') return parseIntersection(item, line, current(), err);
 
       const kv = item.match(/^([^:]+):\s*(.*)$/);
       if (!kv) return err(line, `Settings are written "key: value". Got "${item}".`);
@@ -415,6 +453,24 @@ function parsePost(item: string, line: number, draft: WallDraft, err: (line: num
   draft.wall.posts.push(post);
 }
 
+function parseIntersection(item: string, line: number, draft: WallDraft, err: (line: number, message: string) => void) {
+  const m = item.match(/^(.+?):\s*(2x4|2x6)(?:\s+wall)?\s*,\s*(.+?)\s+from\s+(left|right)$/i);
+  if (!m) return err(line, `Intersections are written "Bath: 2x4 wall, 7-2 from left", to the wall's centerline. Got "${item}".`);
+  const label = m[1]!.trim();
+  if (!isLen(lengthText(m[3]!))) return err(line, `${label}: "${m[3]}" isn't a length.`);
+  if (draft.wall.intersections.some((t) => t.label.toLowerCase() === label.toLowerCase())) {
+    return err(line, `${label}: another intersection on this wall already uses that label.`);
+  }
+  const it: IntersectionInput = {
+    id: `${draft.wall.id}-tee-${label.replace(/[^\w-]/g, '')}`,
+    label,
+    from: m[4]!.toLowerCase() as 'left' | 'right',
+    offset: lengthText(m[3]!),
+    size: m[2]!.toLowerCase() as '2x4' | '2x6',
+  };
+  draft.wall.intersections.push(it);
+}
+
 function parseTall(item: string, line: number, draft: WallDraft, err: (line: number, message: string) => void) {
   const m = item.match(/^(.+?):\s*(.+)$/);
   if (!m) return err(line, `Tall stretches are written "Stair: 10-1 7/8 tall, 12-6 to 24-1 from left". Got "${item}".`);
@@ -504,6 +560,10 @@ export function projectToText(project: Project): string {
     if (wall.tall.length) {
       out.push('', '### Balloon framing');
       for (const t of wall.tall) out.push(`- ${t.label || 'Tall'}: ${t.height} tall, ${t.start} to ${t.end} from ${t.from}`);
+    }
+    if (wall.intersections.length) {
+      out.push('', '### Intersections');
+      for (const t of wall.intersections) out.push(`- ${t.label || 'Wall'}: ${t.size} wall, ${t.offset} from ${t.from}`);
     }
   }
   return out.join('\n') + '\n';

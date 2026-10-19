@@ -102,7 +102,7 @@ export function WallEditor({ index, count, current, dispatch, onBack, onDelete, 
                 <span className="sub">
                   {prefs.view === 'deck'
                     ? 'On the deck, sheathing side up · bottom plate at the deck edge'
-                    : `From inside · 2x6 @ ${wall.spacing}" O.C. · not to scale`}
+                    : `${wall.sheathed === 'yes' ? 'From inside' : 'From the south or west side'} · ${wall.studSize} @ ${wall.spacing}" O.C. · not to scale`}
                 </span>
               </div>
               <div className="sheet-tools">
@@ -116,7 +116,7 @@ export function WallEditor({ index, count, current, dispatch, onBack, onDelete, 
               <>
                 <Elevation framing={framing} fmt={fmt} highlight={highlight} onHighlight={onHighlight} showSheathing={showSheathing} view={prefs.view} />
                 <div className="sheet-hint">Hover a member to see its size and length.</div>
-                <Legend showSheathing={showSheathing} framing={framing} />
+                <Legend showSheathing={showSheathing && framing.wall.sheathing.enabled !== false} framing={framing} />
                 <TitleBlock framing={framing} name={wall.name} fmt={fmt} />
               </>
             ) : (

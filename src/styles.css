@@ -45,6 +45,7 @@
   --w-block: #aebb84;
   --w-post: #a8773f;
   --w-step: #d9b97a;
+  --w-backer: #c7a265;
   --sheath: #0d7f66;
 
   --f-ui: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -98,6 +99,7 @@
     --w-block: #8d9a5c;
     --w-post: #b98949;
     --w-step: #7c6a43;
+    --w-backer: #9a7d4b;
     --sheath: #4fcfab;
     color-scheme: dark;
   }
@@ -146,6 +148,7 @@
   --w-block: #8d9a5c;
   --w-post: #b98949;
   --w-step: #7c6a43;
+  --w-backer: #9a7d4b;
   --sheath: #4fcfab;
   color-scheme: dark;
 }
@@ -1203,8 +1206,24 @@ a.brand {
 .m-post {
   fill: var(--w-post);
 }
-.m-stepBlocking {
+.m-stepBlocking,
+.m-ladder {
   fill: var(--w-step);
+}
+.m-cornerBacker,
+.m-partitionStud {
+  fill: var(--w-backer);
+}
+.tee {
+  fill: color-mix(in srgb, var(--sec-structure) 7%, transparent);
+  stroke: var(--sec-structure);
+  stroke-width: 1;
+  stroke-dasharray: 5 3;
+  pointer-events: none;
+}
+.tee.err {
+  stroke: var(--err);
+  fill: color-mix(in srgb, var(--err) 8%, transparent);
 }
 .strap {
   stroke: var(--sec-structure);

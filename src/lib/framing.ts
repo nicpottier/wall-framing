@@ -2,12 +2,12 @@ import {
   DEPTH,
   PRECUTS,
   T,
-  WALL_DEPTH,
   headerName,
   headerType,
   postType,
   type HeaderType,
   type HeaderTypeId,
+  type LumberSize,
   type PostType,
   type PostTypeId,
 } from './lumber';
@@ -60,6 +60,15 @@ export interface TallSpec {
   height: number;
 }
 
+/** Another wall butting into this one, with its framing depth (3 1/2" or 5 1/2"). */
+export interface IntersectionSpec {
+  id: string;
+  label: string;
+  /** Wall's left end to the intersecting wall's centerline. */
+  x: number;
+  width: number;
+}
+
 export interface WallSpec {
   /** Overall wall length. */
   length: number;
@@ -83,6 +92,15 @@ export interface WallSpec {
   openings: OpeningSpec[];
   posts?: PostSpec[];
   tall?: TallSpec[];
+  /** Stud size; 2x6 unless set. */
+  studs?: LumberSize;
+  /** Walls butting into this one partway along it, backed with ladder blocking. */
+  intersections?: IntersectionSpec[];
+  /**
+   * California corners: at each end where another wall butts in, the depth of that wall (0 for
+   * none). A stud laid flat at the inside face just past it backs the drywall in the corner.
+   */
+  california?: { left: number; right: number };
 }
 
 // ---------- Outputs ----------
@@ -102,7 +120,10 @@ export type Role =
   | 'filler'
   | 'post'
   | 'blocking'
-  | 'stepBlocking';
+  | 'stepBlocking'
+  | 'cornerBacker'
+  | 'partitionStud'
+  | 'ladder';
 
 export const ROLES: Record<Role, { name: string; order: number }> = {
   plate: { name: 'Bottom plate', order: 1 },
@@ -112,6 +133,8 @@ export const ROLES: Record<Role, { name: string; order: number }> = {
   king: { name: 'King stud', order: 4 },
   jack: { name: 'Jack stud (trimmer)', order: 5 },
   post: { name: 'Post', order: 5.5 },
+  cornerBacker: { name: 'Corner backer (California corner)', order: 5.6 },
+  partitionStud: { name: 'Partition backer stud', order: 5.7 },
   header: { name: 'Header', order: 6 },
   headPlate: { name: 'Head plate', order: 6.5 },
   sill: { name: 'Rough sill', order: 7 },
@@ -120,6 +143,7 @@ export const ROLES: Record<Role, { name: string; order: number }> = {
   filler: { name: 'Filler, above opening', order: 10 },
   blocking: { name: 'Seam blocking', order: 11 },
   stepBlocking: { name: 'Step blocking, at strap', order: 12 },
+  ladder: { name: 'Ladder blocking', order: 13 },
 };
 
 /** A single piece of lumber in elevation. x from the wall's left end, z up from the floor. */
@@ -241,6 +265,16 @@ export interface PostFrame {
   hasError: boolean;
 }
 
+export interface IntersectionFrame {
+  spec: IntersectionSpec;
+  /** Faces of the intersecting wall's framing. */
+  x0: number;
+  x1: number;
+  /** Space between backers filled with ladder blocking, if any. */
+  bay: [number, number] | null;
+  hasError: boolean;
+}
+
 export interface Framing {
   ok: true;
   wall: WallSpec;
@@ -252,6 +286,7 @@ export interface Framing {
   sections: WallSection[];
   steps: PlateStep[];
   posts: PostFrame[];
+  intersections: IntersectionFrame[];
   members: Member[];
   openings: OpeningFrame[];
   layout: LayoutMark[];
@@ -313,11 +348,12 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
   if (!(H >= 48) || H > 240) return { ok: false, message: 'Enter a wall height between 4 and 20 feet.' };
   if (!(spacing >= 8) || spacing > 48) return { ok: false, message: 'Enter a stud spacing between 8" and 48".' };
   if (!(wall.sheathing.thickness >= 0) || wall.sheathing.thickness > 6) return { ok: false, message: 'Enter a sheathing thickness between 0 and 6".' };
-  if (!(wall.sheathing.startHeight >= 0) || wall.sheathing.startHeight > H) return { ok: false, message: 'Enter a sheathing start height within the wall height.' };
+  if (wall.sheathing.enabled !== false && (!(wall.sheathing.startHeight >= 0) || wall.sheathing.startHeight > H)) return { ok: false, message: 'Enter a sheathing start height within the wall height.' };
 
   const plateBottom = H - topPlates * T;
   const studLength = plateBottom - T;
 
+  const stock: LumberSize = wall.studs ?? '2x6';
   const members: Member[] = [];
   const issues: Issue[] = [];
   const issue = (level: IssueLevel, message: string, openingId?: string) => issues.push({ level, message, openingId });
@@ -328,7 +364,7 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
   const maxHeight = Math.max(...sections.map((p) => p.height));
   let seq = 0;
   const add = (m: Omit<Member, 'id' | 'group' | 'size'> & { size?: string }) => {
-    const size = m.size ?? '2x6';
+    const size = m.size ?? stock;
     const member: Member = { ...m, size, id: `m${seq++}`, group: `${m.role}|${size}|${round16(m.length)}` };
     members.push(member);
     return member;
@@ -530,18 +566,21 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
   };
   if (!posts.some((p) => !p.hasError && p.x0 <= EPS)) add({ role: 'stud', x: 0, ...studAt(0), isEnd: true });
   if (!posts.some((p) => !p.hasError && p.x1 >= L - EPS)) add({ role: 'stud', x: L - T, ...studAt(L - T), isEnd: true });
+  placeCornerBackers(wall, sectionOf, members, add, issue);
   for (const { center } of layout) {
     const x = center - T / 2;
     if (x < T - EPS || x + T > L - T + EPS) continue;
     if (openings.some((o) => x + T > o.zoneStart + EPS && x < o.zoneEnd - EPS)) continue;
     if (stepZones.some(([s0, s1]) => x + T > s0 + EPS && x < s1 - EPS)) continue;
-    if (posts.some((p) => !p.hasError && x + T > p.x0 + EPS && x < p.x1 - EPS)) continue;
+    if (members.some((m) => FULL_HEIGHT.includes(m.role) && overlapsX(m, x, x + T))) continue;
     add({ role: 'stud', x, ...studAt(x), layoutCenter: center });
   }
+  const intersections = placeIntersections(wall, openings, members, add, issue, studAt, fmt);
 
   placeSeamStuds(wall, sheet, members, openings, posts, add, issue, studAt, fmt);
   placeStepBlocking(steps, sections, members, add, issue, fmt);
-  if (wall.sheathing.blockSeams) placeSeamBlocking(sections, members, openings, add);
+  if (wall.sheathing.blockSeams && wall.sheathing.enabled !== false) placeSeamBlocking(sections, members, openings, add);
+  placeLadderBlocking(intersections, sectionOf, members, add);
 
   // Flag slivers of bay between a layout stud and a king.
   const verticals = members.filter((m) => FULL_HEIGHT.includes(m.role)).sort((a, b) => a.x - b.x);
@@ -555,7 +594,7 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
     }
   }
 
-  const cutList = buildCutList(wall, members, openings, sections, posts);
+  const cutList = buildCutList(wall, members, openings, sections, posts, intersections);
   const count = (...roles: Role[]) => members.filter((m) => roles.includes(m.role)).length;
   const stats = {
     fullStuds: count('stud', 'seamStud', 'king'),
@@ -567,16 +606,23 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
     linealFeet: cutList.reduce((a, g) => a + g.qty * g.length, 0) / 12,
   };
 
-  return { ok: true, wall, plateBottom, studLength, maxHeight, sections, steps, posts, members, openings, layout, sheathing: sheet, issues, cutList, stats };
+  return { ok: true, wall, plateBottom, studLength, maxHeight, sections, steps, posts, intersections, members, openings, layout, sheathing: sheet, issues, cutList, stats };
 }
 
 type AddMember = (m: Omit<Member, 'id' | 'group' | 'size'> & { size?: string }) => Member;
 type AddIssue = (level: IssueLevel, message: string, openingId?: string) => void;
 
-const FULL_HEIGHT: Role[] = ['stud', 'seamStud', 'king', 'post'];
-const VERTICAL: Role[] = ['stud', 'seamStud', 'king', 'post', 'jack', 'crippleTop', 'crippleBottom'];
+const FULL_HEIGHT: Role[] = ['stud', 'seamStud', 'king', 'post', 'cornerBacker', 'partitionStud'];
+const VERTICAL: Role[] = ['stud', 'seamStud', 'king', 'post', 'cornerBacker', 'partitionStud', 'jack', 'crippleTop', 'crippleBottom'];
 /** Flat members a block can't pass through. */
-const FLAT: Role[] = ['header', 'headPlate', 'sill', 'filler', 'blocking', 'stepBlocking'];
+const FLAT: Role[] = ['header', 'headPlate', 'sill', 'filler', 'blocking', 'stepBlocking', 'ladder'];
+/** Members that stay put: everything full height except common layout studs, plus jacks (with the header over them). */
+const isFixed = (m: Member) =>
+  (FULL_HEIGHT.includes(m.role) && m.layoutCenter == null) || m.role === 'jack';
+/** Drywall wants about this much backing past an inside corner or a partition face. */
+const DRYWALL_BACKING = 0.75;
+/** Ladder blocks go in at this spacing up the wall. */
+const LADDER_SPACING = 24;
 /** Seam blocking is a 2x4 laid flat, so its wide face shows in elevation. */
 const BLOCK_FACE = DEPTH['2x4'];
 const overlapsX = (m: Member, x0: number, x1: number) => m.x < x1 - EPS && m.x + m.w > x0 + EPS;
@@ -748,6 +794,142 @@ function placeStepBlocking(steps: PlateStep[], sections: WallSection[], members:
 }
 
 /**
+ * California corners: where another wall butts into an end of this one, a stud laid flat at the inside
+ * face just past it gives the drywall something to land on in the inside corner. Skipped where framing
+ * is already there (a king, jack or post), and swapped for a single stud, or a note to use drywall clips,
+ * when an opening leaves no room for it.
+ */
+function placeCornerBackers(wall: WallSpec, sectionOf: (x: number, w?: number) => WallSection, members: Member[], add: AddMember, issue: AddIssue) {
+  const L = wall.length;
+  const face = DEPTH[wall.studs ?? '2x6'];
+  for (const side of ['left', 'right'] as const) {
+    const d = wall.california?.[side] ?? 0;
+    if (!(d > 0)) continue;
+    const corner = side === 'left' ? d : L - d;
+    const band: [number, number] = side === 'left' ? [corner, corner + DRYWALL_BACKING] : [corner - DRYWALL_BACKING, corner];
+    // A king, jack or post already giving most of that nailing is enough.
+    const backed = members.filter(isFixed).reduce((n, m) => n + Math.max(0, Math.min(m.x + m.w, band[1]) - Math.max(m.x, band[0])), 0);
+    if (backed >= DRYWALL_BACKING * 0.6) continue;
+    const blocked = (a: number, b: number) =>
+      a < -EPS || b > L + EPS || members.some((m) => m.role !== 'plate' && m.role !== 'topPlate' && m.layoutCenter == null && overlapsX(m, a, b));
+    const fits = (w: number): [number, number] => (side === 'left' ? [corner, corner + w] : [corner - w, corner]);
+    const piece = [face, T].map(fits).find(([a, b]) => !blocked(a, b));
+    if (!piece) {
+      issue('note', `No room for a California corner at the ${side} end; use drywall clips in that corner.`);
+      continue;
+    }
+    // Common layout studs in the way give way to it.
+    for (let i = members.length - 1; i >= 0; i--) {
+      const m = members[i]!;
+      if (m.layoutCenter != null && overlapsX(m, piece[0], piece[1])) members.splice(i, 1);
+    }
+    const w = piece[1] - piece[0];
+    const len = sectionOf(piece[0], w).studLength;
+    add({ role: 'cornerBacker', x: piece[0], z: T, w, h: len, length: len });
+  }
+}
+
+/**
+ * Where another wall butts in partway along this one: framing each side of it with ladder blocking
+ * between, so its end stud and the drywall on both faces have something to fasten to. Framing already
+ * there (a post, king or end stud) counts; common layout studs in the way are moved.
+ */
+function placeIntersections(
+  wall: WallSpec,
+  openings: OpeningFrame[],
+  members: Member[],
+  add: AddMember,
+  issue: AddIssue,
+  studAt: (x: number) => { z: number; w: number; h: number; length: number },
+  fmt: Formatter,
+): IntersectionFrame[] {
+  const L = wall.length;
+  const out: IntersectionFrame[] = [];
+  for (const spec of wall.intersections ?? []) {
+    const tag = spec.label || 'Wall';
+    const x0 = spec.x - spec.width / 2;
+    const x1 = spec.x + spec.width / 2;
+    const frame: IntersectionFrame = { spec, x0, x1, bay: null, hasError: true };
+    out.push(frame);
+    if (x0 < -EPS || x1 > L + EPS) {
+      issue('error', `${tag}: runs ${fmt(Math.max(-x0, x1 - L))} past the end of the wall.`, spec.id);
+      continue;
+    }
+    const o = openings.find((op) => x0 < op.spec.x + op.spec.width - EPS && x1 > op.spec.x + EPS);
+    if (o) {
+      issue('warning', `${tag}: meets this wall inside ${o.spec.label}'s rough opening, with nothing to fasten to below the header. Move one of them.`, spec.id);
+      continue;
+    }
+    frame.hasError = false;
+
+    // The stretch that needs backing: the intersecting wall plus drywall nailing each side.
+    const b0 = x0 - DRYWALL_BACKING;
+    const b1 = x1 + DRYWALL_BACKING;
+    const fixed = members.filter(isFixed);
+    const gaps: [number, number][] = [];
+    let at = b0;
+    for (const m of [...fixed].filter((m) => overlapsX(m, b0, b1)).sort((a, b) => a.x - b.x)) {
+      if (m.x > at + EPS) gaps.push([at, m.x]);
+      at = Math.max(at, m.x + m.w);
+    }
+    if (at < b1 - EPS) gaps.push([at, b1]);
+    if (!gaps.length) continue;
+
+    let a = gaps[0]![0];
+    let b = gaps[gaps.length - 1]![1];
+    const added: [number, number][] = [];
+    if (Math.abs(a - b0) < EPS) {
+      const near = fixed.filter((m) => m.x + m.w <= b0 + EPS && m.x + m.w >= b0 - T - EPS).sort((p, q) => q.x + q.w - (p.x + p.w))[0];
+      if (near) a = near.x + near.w;
+      else added.push([b0 - T, b0]);
+    }
+    if (Math.abs(b - b1) < EPS) {
+      const near = fixed.filter((m) => m.x >= b1 - EPS && m.x <= b1 + T + EPS).sort((p, q) => p.x - q.x)[0];
+      if (near) b = near.x;
+      else added.push([b1, b1 + T]);
+    }
+    const lo = Math.min(a, ...added.map((s) => s[0]));
+    const hi = Math.max(b, ...added.map((s) => s[1]));
+    for (let i = members.length - 1; i >= 0; i--) {
+      const m = members[i]!;
+      if (m.layoutCenter != null && overlapsX(m, lo, hi)) members.splice(i, 1);
+    }
+    for (const [s0] of added) {
+      if (s0 < -EPS || s0 + T > L + EPS || members.some((m) => isFixed(m) && overlapsX(m, s0, s0 + T))) {
+        issue('warning', `${tag}: no room for a backer stud beside it; check the framing there.`, spec.id);
+        continue;
+      }
+      add({ role: 'partitionStud', x: s0, ...studAt(s0) });
+    }
+    frame.bay = [a, b];
+  }
+  return out;
+}
+
+/** 2x4 flat blocks across each intersection's bay, every 24" up the wall. */
+function placeLadderBlocking(intersections: IntersectionFrame[], sectionOf: (x: number, w?: number) => WallSection, members: Member[], add: AddMember) {
+  for (const it of intersections) {
+    if (!it.bay) continue;
+    const [a, b] = it.bay;
+    const top = sectionOf(a, b - a).plateBottom;
+    for (let zc = LADDER_SPACING; zc + BLOCK_FACE / 2 <= top - T; zc += LADDER_SPACING) {
+      const bz = zc - BLOCK_FACE / 2;
+      const inside = members
+        .filter((m) => VERTICAL.includes(m.role) && m.x > a + EPS && m.x + m.w < b - EPS && m.z <= bz + EPS && m.z + m.h >= bz + BLOCK_FACE - EPS)
+        .sort((p, q) => p.x - q.x);
+      let x = a;
+      for (const end of [...inside.map((m) => [m.x, m.x + m.w] as const), [b, b] as const]) {
+        const [e0, e1] = end;
+        if (e0 - x >= MIN_BLOCK - EPS && !members.some((m) => FLAT.includes(m.role) && overlapsX(m, x, e0) && m.z < bz + BLOCK_FACE - EPS && m.z + m.h > bz + EPS)) {
+          add({ role: 'ladder', x, z: bz, w: e0 - x, h: BLOCK_FACE, size: '2x4', length: e0 - x });
+        }
+        x = e1;
+      }
+    }
+  }
+}
+
+/**
  * Puts framing under each vertical sheathing seam: two studs straddling it (double) or one
  * centered on it (single). Layout studs in the way are replaced; end studs and kings stay.
  */
@@ -845,7 +1027,15 @@ function placeSeamBlocking(sections: WallSection[], members: Member[], openings:
   }
 }
 
-function buildCutList(wall: WallSpec, members: Member[], openings: OpeningFrame[], sections: WallSection[], posts: PostFrame[]): CutGroup[] {
+function buildCutList(
+  wall: WallSpec,
+  members: Member[],
+  openings: OpeningFrame[],
+  sections: WallSection[],
+  posts: PostFrame[],
+  intersections: IntersectionFrame[],
+): CutGroup[] {
+  const depth = DEPTH[wall.studs ?? '2x6'];
   const groups = new Map<string, CutGroup>();
   for (const m of members) {
     let g = groups.get(m.group);
@@ -874,7 +1064,8 @@ function buildCutList(wall: WallSpec, members: Member[], openings: OpeningFrame[
     }
     if (g.role === 'header') {
       const h = openings.find((o) => headerName(o.header) === g.size)!.header;
-      if (h.width < WALL_DEPTH) g.notes.push(`${toFraction(WALL_DEPTH - h.width)}" rigid foam to fill the wall`);
+      if (h.width < depth) g.notes.push(`${toFraction(depth - h.width)}" rigid foam to fill the wall`);
+      else if (h.width > depth) g.notes.push(`${toFraction(h.width - depth)}" wider than the wall`);
       if (wall.exterior && g.length > LONG_HEADER) g.notes.push('A35 clip each end (10/S4.1)');
     }
     if (g.role === 'headPlate') g.notes.push(`Flat under the header; doubled at exterior openings over 8'-0" (10/S4.1)`);
@@ -882,12 +1073,19 @@ function buildCutList(wall: WallSpec, members: Member[], openings: OpeningFrame[
       g.notes.push(wall.sheathing.seamStuds === 'double' ? 'Pairs straddle vertical sheathing seams' : 'Centered under vertical sheathing seams');
     }
     if (g.role === 'blocking' && !g.notes.length) g.notes.push('2x4 on the flat, centered on horizontal sheathing seams');
+    if (g.role === 'cornerBacker') g.notes.push(members.some((m) => m.group === g.key && m.w > T) ? 'Laid flat at the inside face, just past the wall butting in' : 'Just past the wall butting in, for drywall');
+    if (g.role === 'partitionStud') {
+      const labels = intersections.filter((i) => i.bay && !i.hasError).map((i) => i.spec.label);
+      g.notes.push(`Each side of ${labels.join(', ') || 'an intersecting wall'}`);
+    }
+    if (g.role === 'ladder') g.notes.push(`2x4 on the flat every 24" between the backers, for the intersecting wall and its drywall`);
     if (g.role === 'stepBlocking') g.notes.push(`2x4 on the flat in line with the lower plates, 4'-0" min past each plate step; CS16 strap over (3/S4.1)`);
     if (g.role === 'post') {
-      const labels = posts.filter((p) => !p.hasError && (p.type.plies === 1 ? p.type.label === g.size : g.size === '2x6')).map((p) => p.spec.label);
+      const builtUp = g.size === (wall.studs ?? '2x6');
+      const labels = posts.filter((p) => !p.hasError && (p.type.plies === 1 ? p.type.label === g.size : builtUp)).map((p) => p.spec.label);
       if (labels.length) g.notes.push(`At ${labels.join(', ')}`);
-      if (g.size === '2x6') g.notes.push('Built-up: nail the plies together');
-      else if (g.size === '4x4') g.notes.push(`${toFraction(WALL_DEPTH - 3.5)}" short of the wall depth`);
+      if (builtUp) g.notes.push('Built-up: nail the plies together');
+      else if (g.size === '4x4' && depth > 3.5) g.notes.push(`${toFraction(depth - 3.5)}" short of the wall depth`);
     }
     if (g.role === 'stud' || g.role === 'seamStud' || g.role === 'king') {
       const tall = sections.find((p) => p.tall && round16(p.studLength) === g.length);

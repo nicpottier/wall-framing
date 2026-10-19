@@ -12,6 +12,8 @@ export type CornerType = 'none' | 'outside' | 'inside';
 export type PanelOrientation = 'vertical' | 'horizontal';
 
 export interface SheathingSpec {
+  /** False for walls with no sheathing (most interior walls). */
+  enabled?: boolean;
   orientation: PanelOrientation;
   /** Total panel thickness (e.g. ZIP System R-9 is about 2"). */
   thickness: number;
@@ -79,6 +81,7 @@ export function sheathingLayout(wall: {
 }): SheathingLayout {
   const { length: L, height: H, sheathing: s } = wall;
   const panel = panelSize(s.orientation);
+  if (s.enabled === false) return { panel, extLeft: 0, extRight: 0, extOrigin: 0, verticalSeams: [], horizontalSeams: [], top: 0 };
   const extLeft = cornerExtension(s.corners.left, s.thickness);
   const extRight = cornerExtension(s.corners.right, s.thickness);
   const fromRight = wall.layoutFrom === 'right';
@@ -103,6 +106,7 @@ export function sheathingLayout(wall: {
  */
 export function panelRows(s: SheathingSpec, height: number): { horizontalSeams: number[]; top: number } {
   const panel = panelSize(s.orientation);
+  if (s.enabled === false) return { horizontalSeams: [], top: 0 };
   const horizontalSeams: number[] = [];
   for (let k = Math.max(0, Math.ceil(-s.startHeight / panel.height)); ; k++) {
     const z = s.startHeight + k * panel.height;

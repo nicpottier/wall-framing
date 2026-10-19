@@ -45,7 +45,7 @@ The data flow is one way: **form or `.wall.md` text → `toWallSpec` → `comput
 
 A project holds several walls. The **overview** shows every wall as a card (size, openings, anything to fix, and a small drawing at a shared scale), with tabs for the project's combined **Cut list** and its **Text**. Clicking a card opens that wall's **editor** (form, dimensioned drawing, cut list and checks) at `#/wall/N`; **← All walls**, the browser's Back button, and the ‹ › arrows move between them.
 
-The example (**Load example**) is the first floor of the Buckley-Watanabe residence, written as [`src/state/examples/first-floor.wall.md`](src/state/examples/first-floor.wall.md): the main house's exterior walls and the living-room bump-out, split where a framer would build them separately (the garage walls and the balloon-framed west wall along the stairs are left out) from the architectural plans (A101, A007, A200, A302), with beams and posts from the structural plans (S2.2). Its notes record the assumptions made reading the plans.
+The example (**Load example**) is the first floor of the Buckley-Watanabe residence, written as [`src/state/examples/first-floor.wall.md`](src/state/examples/first-floor.wall.md): the main house's walls, exterior and interior, and the living-room bump-out, split where a framer would build them separately (the garage walls and the balloon-framed west wall along the stairs are left out) from the architectural plans (A101, A007, A200, A302), with beams and posts from the structural plans (S2.2). Its notes record the assumptions made reading the plans.
 
 ## Wall spec text (`.wall.md`)
 
@@ -76,12 +76,17 @@ The overview's **Text** tab edits the whole project as plain text, kept in sync 
 
 ### Balloon framing
 - Stair: 10-1 7/8 tall, 12-6 to 24-1 from left
+
+### Intersections
+- Bath: 2x4 wall, 7-2 from left
 ```
 
 - `## Defaults` applies to every wall below it; a wall's own settings override it. Other text is kept as notes; `<!-- -->` comments are dropped.
 - Settings: `length`, `height`, `studs`, `layout`, `top plate`, `exterior`, `headers`, `head height`, `rough sill`, `window ro`, `door ro`, `sheathing`, `corners`.
 - Openings: `<label>: <window|door> <W x H or callout>, <position>`, then any of `head`, `sill`, `header`, `jacks`, `ro W x H`.
 - Posts (under `### Posts`): `<label>: <6x6|4x6|4x4|(2) studs|(3) studs|(4) studs>, <position to centerline>`.
+- Intersections (under `### Intersections`): `<label>: <2x4|2x6> wall, <position to its centerline>`, for a wall butting in partway along.
+- Interior walls: `studs: 2x4 @ 16`, `exterior: no`, `sheathing: none`. California corners: `california corners: left 2x6, right 2x4` (the size of the wall butting into each end), `both` or `none`.
 - Tall stretches (under `### Balloon framing`): `<label>: <height> tall, <near> to <far> from <left|right>`, giving both ends of the stretch.
 - Positions are to the centerline: `4-6 from left`, `5-9 from right`, `4-1 1/2 after W1` (centerline to centerline), or `centered`. "after" and "centered" become plain positions when the form rewrites the text.
 
@@ -124,9 +129,15 @@ Left and right are always as seen **from inside** the building. Enter opening po
 - **Posts** sit where a beam bears on the wall (S2.2 shows a post below each end of B2; plan note 5 calls for (3) studs minimum at beam ends). A post replaces the layout studs it covers, or the end stud at a wall end, backs any sheathing seam that lands on it, and is an error over an opening's framing or a plate step. Built-up posts list each stud.
 - **Tall stretches** frame part of a wall to its own height where its top plate steps (3/S4.1). A stretch whose bottom plate also changes, or that runs two stories, is better built as its own wall. The stretch gets its own double top plate and stud length; openings inside it frame to it. At each step (3/S4.1): (2) studs each side, 2x4 flat blocking on the tall side in line with the lower plates for at least 4'-0", and a CS16 strap over the sheathing ((14) 8d to the plates, (5) 8d to each block). Sheathing rows and seam blocking follow each stretch's height.
 
+### Intersections and corners
+
+- **Intersections**: where a wall butts into another partway along, the wall it meets gets a backer stud each side (3/4" of drywall nailing past each face) with 2x4 ladder blocking on the flat every 24" between. Kings, jacks, posts or end studs already there serve as backers; common layout studs in the way are moved. A wall meeting inside a rough opening is flagged.
+- **California corners**: at an end where another wall butts in, a stud laid flat at the inside face, just past that wall, backs the drywall in the inside corner. Skipped where a king, jack or post already backs it; a single stud is used when an opening leaves no room to lay one flat, and a note suggests drywall clips when there's no room at all.
+- **2x4 walls and unsheathed walls**: stud size is per wall, and interior walls can have no sheathing (no seams, seam studs or seam blocking).
+
 ## Ideas for next steps
 
-- Corner and T-intersection framing at wall ends (California corners, ladder blocking)
+- A floor plan placing every wall, so intersections and corners are found automatically
 - Fire blocking, mid-height blocking, and sheathing layout overlay
 - Multiple walls per project with a combined lumber order (stock-length optimization)
 - Built-up stud counts from the structural plans' diamonds, stud wall type A (1¾×5½ LSL @ 12")

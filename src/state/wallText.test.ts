@@ -161,9 +161,49 @@ describe('posts and balloon framing', () => {
   });
 });
 
+describe('interior walls, corners and intersections', () => {
+  const text = `## Defaults
+- studs: 2x6 @ 16
+
+## West
+- length: 13-6 1/2
+- california corners: right 2x6
+
+### Intersections
+- Bath north: 2x4 wall, 6-10 3/4 from left
+
+## Bath north
+- length: 6-0 5/8
+- studs: 2x4 @ 16
+- exterior: no
+- sheathing: none
+`;
+
+  it('reads stud size, sheathing, california corners and intersections', () => {
+    const { project, errors } = parseProjectText(text);
+    expect(errors).toEqual([]);
+    const [west, bath] = project!.walls;
+    expect(west).toMatchObject({ studSize: '2x6', californiaLeft: 'none', californiaRight: '2x6', sheathed: 'yes' });
+    expect(west!.intersections).toMatchObject([{ label: 'Bath north', size: '2x4', from: 'left', offset: '6-10 3/4' }]);
+    expect(bath).toMatchObject({ studSize: '2x4', sheathed: 'no', exterior: 'no' });
+  });
+
+  it('writes them back out', () => {
+    const { project } = parseProjectText(text);
+    const again = parseProjectText(projectToText(project!)).project!;
+    expect(again.walls).toEqual(project!.walls);
+  });
+
+  it('explains a bad california corner', () => {
+    const { errors } = parseProjectText(text.replace('right 2x6', 'middle'));
+    expect(errors[0]!.message).toContain('california corners');
+  });
+});
+
 describe('first-floor example', () => {
   it('reads the plans file into the main house walls', () => {
     expect(EXAMPLE_PROJECT.walls.map((w) => w.name)).toEqual([
+      'North',
       'East · kitchen',
       'East · bay, north return',
       'East · bay',
@@ -172,9 +212,23 @@ describe('first-floor example', () => {
       'South',
       'West · south',
       'West · north',
+      'Mudroom stub',
+      'Bath north',
+      'Bath south',
+      'Bath east',
+      'Niche north',
+      'Niche south',
+      'Hall',
+      'Closet north',
+      'Closet west',
+      'Closet south',
+      'Stair wall',
     ]);
     expect(EXAMPLE_PROJECT.walls.every((w) => w.tall.length === 0)).toBe(true);
-    expect(EXAMPLE_PROJECT.walls.filter((w) => w.posts.length).map((w) => w.name)).toEqual(['South']);
+    expect(EXAMPLE_PROJECT.walls.filter((w) => w.posts.length).map((w) => w.name)).toEqual(['North', 'South', 'Hall']);
+    const west = EXAMPLE_PROJECT.walls.find((w) => w.name === 'West · north')!;
+    expect(west.intersections.map((t) => t.label)).toEqual(['Bath north', 'Bath south']);
+    expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'Bath east')).toMatchObject({ studSize: '2x4', sheathed: 'no', californiaLeft: '2x4' });
     expect(EXAMPLE_PROJECT.defaults).toMatchObject({ height: '9-1 1/4', windowHeadHeight: '7-8' });
   });
 });

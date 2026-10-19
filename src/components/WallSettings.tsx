@@ -50,6 +50,7 @@ export function WallSettings({ wall, dispatch }: Props) {
               ))}
           </span>
         </div>
+        <Segmented label="Studs" value={wall.studSize} options={[['2x4', '2x4'], ['2x6', '2x6']]} onChange={set('studSize')} />
         <Field label="Stud spacing">
           {(id) => (
             <select id={id} value={wall.spacing} onChange={(e) => set('spacing')(e.target.value)}>
@@ -96,36 +97,44 @@ export function SheathingSettings({ wall, dispatch }: Props) {
       )}
     </Field>
   );
-  const summary = [
-    wall.sheathingOrientation === 'vertical' ? 'Vertical' : 'Horizontal',
-    `${wall.sheathingThickness}" thick`,
-    `starts ${wall.sheathingStart}"`,
-    `${wall.seamStuds} seam studs`,
-  ].join(' · ');
+  const summary =
+    wall.sheathed === 'no'
+      ? 'None'
+      : [
+          wall.sheathingOrientation === 'vertical' ? 'Vertical' : 'Horizontal',
+          `${wall.sheathingThickness}" thick`,
+          `starts ${wall.sheathingStart}"`,
+          `${wall.seamStuds} seam studs`,
+        ].join(' · ');
 
   return (
-    <Panel title="Sheathing · 4x8" summary={summary} collapsible tone="sheathing">
+    <Panel title="Sheathing" summary={summary} collapsible tone="sheathing">
       <div className="fields">
-        <Segmented
-          label="Panels run"
-          value={wall.sheathingOrientation}
-          options={[['vertical', 'Vertical'], ['horizontal', 'Horizontal']]}
-          onChange={set('sheathingOrientation')}
-        />
-        <Field label="Thickness" hint={`ZIP R-9 ≈ 2"`}>
-          {(id) => <LengthInput id={id} value={wall.sheathingThickness} onChange={set('sheathingThickness')} />}
-        </Field>
-        <Field label="Start height" hint="Floor to bottom of first full panel">
-          {(id) => <LengthInput id={id} value={wall.sheathingStart} onChange={set('sheathingStart')} />}
-        </Field>
-        <Segmented label="Seam studs" value={wall.seamStuds} options={[['single', 'Single'], ['double', 'Double']]} onChange={set('seamStuds')} />
-        {corner('cornerLeft', 'Left end corner')}
-        {corner('cornerRight', 'Right end corner')}
-        <p className="field-note full">
-          Seen from inside. Outside adds the sheathing thickness; inside adds the wall depth plus sheathing. Layout and
-          sheathing start at the {wall.layoutFrom} end.
-        </p>
-        <Segmented label="Block horizontal seams" value={wall.blockSeams} options={[['yes', 'Yes'], ['no', 'No']]} onChange={set('blockSeams')} />
+        <Segmented full label="Sheathed" value={wall.sheathed} options={[['yes', 'Yes, 4x8 panels'], ['no', 'No sheathing']]} onChange={set('sheathed')} />
+        {wall.sheathed === 'yes' && (
+          <>
+            <Segmented
+              label="Panels run"
+              value={wall.sheathingOrientation}
+              options={[['vertical', 'Vertical'], ['horizontal', 'Horizontal']]}
+              onChange={set('sheathingOrientation')}
+            />
+            <Field label="Thickness" hint={`ZIP R-9 ≈ 2"`}>
+              {(id) => <LengthInput id={id} value={wall.sheathingThickness} onChange={set('sheathingThickness')} />}
+            </Field>
+            <Field label="Start height" hint="Floor to bottom of first full panel">
+              {(id) => <LengthInput id={id} value={wall.sheathingStart} onChange={set('sheathingStart')} />}
+            </Field>
+            <Segmented label="Seam studs" value={wall.seamStuds} options={[['single', 'Single'], ['double', 'Double']]} onChange={set('seamStuds')} />
+            {corner('cornerLeft', 'Left end corner')}
+            {corner('cornerRight', 'Right end corner')}
+            <p className="field-note full">
+              Seen from inside. Outside adds the sheathing thickness; inside adds the wall depth plus sheathing. Layout and
+              sheathing start at the {wall.layoutFrom} end.
+            </p>
+            <Segmented label="Block horizontal seams" value={wall.blockSeams} options={[['yes', 'Yes'], ['no', 'No']]} onChange={set('blockSeams')} />
+          </>
+        )}
       </div>
     </Panel>
   );

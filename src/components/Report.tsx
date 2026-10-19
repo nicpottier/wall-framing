@@ -14,9 +14,11 @@ export const swatchVar = (role: Role) => {
           ? 'seam'
           : role === 'blocking'
             ? 'block'
-            : role === 'stepBlocking'
+            : role === 'stepBlocking' || role === 'ladder'
               ? 'step'
-              : role;
+              : role === 'cornerBacker' || role === 'partitionStud'
+                ? 'backer'
+                : role;
   return `var(--w-${name})`;
 };
 
@@ -36,11 +38,18 @@ const LEGEND: [string, Role][] = [
 /** Shown only on walls that have them. */
 const EXTRA_LEGEND: [string, Role][] = [
   ['Post', 'post'],
+  ['Corner / partition backer', 'cornerBacker'],
+  ['Partition backer', 'partitionStud'],
+  ['Ladder blocking', 'ladder'],
   ['Step blocking', 'stepBlocking'],
 ];
 
 export function Legend({ showSheathing, framing }: { showSheathing: boolean; framing?: Framing }) {
-  const extras = EXTRA_LEGEND.filter(([, role]) => framing?.members.some((m) => m.role === role));
+  const has = (role: Role) => framing?.members.some((m) => m.role === role);
+  // Corner and partition backers share a swatch; list it once.
+  const extras = EXTRA_LEGEND.filter(([, role]) => has(role) && !(role === 'partitionStud' && has('cornerBacker'))).map(
+    ([name, role]): [string, Role] => [role === 'cornerBacker' && !has('partitionStud') ? 'Corner backer' : name, role],
+  );
   return (
     <div className="legend">
       {[...LEGEND, ...extras].map(([name, role]) => (
@@ -72,7 +81,7 @@ export function TitleBlock({ framing, name, fmt }: { framing: Framing; name: str
     ['Length', fmt(wall.length)],
     ['Height', framing.maxHeight > wall.height ? `${fmt(wall.height)} – ${fmt(framing.maxHeight)}` : fmt(wall.height)],
     ['Stud length', fmt(framing.studLength)],
-    ['Spacing', `${wall.spacing}" O.C.`],
+    ['Studs', `${wall.studs ?? '2x6'} @ ${wall.spacing}" O.C.`],
     ['Plates', `1 bottom · ${wall.topPlates} top`],
     ['Openings', String(framing.openings.length)],
     ...(framing.posts.length ? [['Posts', String(framing.posts.length)] as [string, string]] : []),

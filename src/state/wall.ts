@@ -1,5 +1,5 @@
-import { TYPICAL_HEADER, isHeaderTypeId, isPostTypeId, postType, type HeaderTypeId, type PostTypeId } from '../lib/lumber';
-import type { Issue, LayoutFrom, OpeningSpec, OpeningType, PostSpec, TallSpec, WallSpec } from '../lib/framing';
+import { DEPTH, TYPICAL_HEADER, isHeaderTypeId, isPostTypeId, postType, type HeaderTypeId, type LumberSize, type PostTypeId } from '../lib/lumber';
+import type { IntersectionSpec, Issue, LayoutFrom, OpeningSpec, OpeningType, PostSpec, TallSpec, WallSpec } from '../lib/framing';
 import type { CornerType, PanelOrientation } from '../lib/sheathing';
 import { parseLength, toFraction } from '../lib/units';
 
@@ -44,9 +44,19 @@ export interface TallInput {
   height: string;
 }
 
+/** Another wall butting into this one partway along, positioned to its centerline. */
+export interface IntersectionInput {
+  id: string;
+  label: string;
+  from: WallEnd;
+  offset: string;
+  size: LumberSize;
+}
+
 /** Settings a wall can inherit from a project's defaults. */
 export interface WallSettings {
   height: string;
+  studSize: LumberSize;
   spacing: string;
   layoutFrom: LayoutFrom;
   topPlates: '1' | '2';
@@ -70,6 +80,11 @@ export interface WallSettings {
   cornerRight: CornerType;
   seamStuds: 'single' | 'double';
   blockSeams: 'yes' | 'no';
+  /** Interior walls usually have none. */
+  sheathed: 'yes' | 'no';
+  /** California corner at each end: the size of the wall butting in there, or none. */
+  californiaLeft: 'none' | LumberSize;
+  californiaRight: 'none' | LumberSize;
 }
 
 export interface WallInput extends WallSettings {
@@ -81,12 +96,14 @@ export interface WallInput extends WallSettings {
   openings: OpeningInput[];
   posts: PostInput[];
   tall: TallInput[];
+  intersections: IntersectionInput[];
 }
 
 export type WallSettingKey = keyof WallSettings | 'name' | 'length' | 'notes';
 
 export const DEFAULT_SETTINGS: WallSettings = {
   height: '97 1/8',
+  studSize: '2x6',
   spacing: '16',
   layoutFrom: 'left',
   topPlates: '2',
@@ -106,6 +123,9 @@ export const DEFAULT_SETTINGS: WallSettings = {
   cornerRight: 'none',
   seamStuds: 'double',
   blockSeams: 'yes',
+  sheathed: 'yes',
+  californiaLeft: 'none',
+  californiaRight: 'none',
 };
 
 export const EXAMPLE_WALL: WallInput = {
@@ -120,6 +140,7 @@ export const EXAMPLE_WALL: WallInput = {
   ],
   posts: [],
   tall: [],
+  intersections: [],
 };
 
 const UNIT_DEFAULTS: Record<OpeningType, Pick<OpeningInput, 'width' | 'height'>> = {
@@ -230,7 +251,10 @@ export type WallAction =
   | { type: 'removePost'; id: string }
   | { type: 'addTall' }
   | { type: 'updateTall'; id: string; patch: Partial<TallInput> }
-  | { type: 'removeTall'; id: string };
+  | { type: 'removeTall'; id: string }
+  | { type: 'addIntersection' }
+  | { type: 'updateIntersection'; id: string; patch: Partial<IntersectionInput> }
+  | { type: 'removeIntersection'; id: string };
 
 const nextLabel = (openings: OpeningInput[], kind: OpeningType, except?: string) => {
   const p = kind === 'door' ? 'D' : 'W';
@@ -313,7 +337,28 @@ export function wallReducer(state: WallInput, action: WallAction): WallInput {
       return { ...state, tall: state.tall.map((t) => (t.id === action.id ? { ...t, ...action.patch } : t)) };
     case 'removeTall':
       return { ...state, tall: state.tall.filter((t) => t.id !== action.id) };
+    case 'addIntersection': {
+      const L = parseLength(state.length) || 240;
+      let k = 1;
+      while (state.intersections.some((t) => t.label === `T${k}`)) k++;
+      const it: IntersectionInput = { id: newId('i'), label: `T${k}`, from: 'left', offset: toFraction(Math.round(L / 2)), size: '2x4' };
+      return { ...state, intersections: [...state.intersections, it] };
+    }
+    case 'updateIntersection':
+      return { ...state, intersections: state.intersections.map((t) => (t.id === action.id ? { ...t, ...action.patch } : t)) };
+    case 'removeIntersection':
+      return { ...state, intersections: state.intersections.filter((t) => t.id !== action.id) };
   }
+}
+
+/** Wall's left end to an intersecting wall's centerline, or a message. */
+export function resolveIntersection(t: IntersectionInput, wall: WallInput): number | string {
+  const tag = t.label || 'Wall';
+  const offset = parseLength(t.offset);
+  if (!isLength(offset)) return `${tag}: enter a valid position.`;
+  if (t.from === 'left') return offset;
+  const L = parseLength(wall.length);
+  return Number.isFinite(L) ? L - offset : `${tag}: enter a wall length to measure from the right end.`;
 }
 
 /** Wall's left end to the post's centerline, or a message. */
@@ -390,6 +435,13 @@ export function toWallSpec(input: WallInput): ParsedWall {
     if (typeof r === 'string') inputIssues.push({ level: 'error', openingId: t.id, message: r });
     else tall.push({ id: t.id, label: t.label, ...r });
   }
+  const intersections: IntersectionSpec[] = [];
+  for (const t of input.intersections) {
+    const r = resolveIntersection(t, input);
+    if (typeof r === 'string') inputIssues.push({ level: 'error', openingId: t.id, message: r });
+    else intersections.push({ id: t.id, label: t.label || 'Wall', x: r, width: DEPTH[t.size] });
+  }
+  const californiaDepth = (v: WallSettings['californiaLeft']) => (v === 'none' ? 0 : DEPTH[v]);
   return {
     spec: {
       length: parseLength(input.length),
@@ -402,6 +454,7 @@ export function toWallSpec(input: WallInput): ParsedWall {
       exterior: input.exterior !== 'no',
       sillPlies: input.sillPlies === '2' ? 2 : 1,
       sheathing: {
+        enabled: input.sheathed !== 'no',
         orientation: input.sheathingOrientation,
         thickness: parseLength(input.sheathingThickness),
         startHeight: parseLength(input.sheathingStart),
@@ -412,6 +465,9 @@ export function toWallSpec(input: WallInput): ParsedWall {
       openings,
       posts,
       tall,
+      studs: input.studSize === '2x4' ? '2x4' : '2x6',
+      intersections,
+      california: { left: californiaDepth(input.californiaLeft), right: californiaDepth(input.californiaRight) },
     },
     inputIssues,
   };

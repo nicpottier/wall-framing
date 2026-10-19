@@ -1,7 +1,16 @@
 import { useId, type Dispatch, type ReactNode } from 'react';
-import { POST_TYPES, T, postType } from '../lib/lumber';
+import { DEPTH, POST_TYPES, T, postType } from '../lib/lumber';
 import { parseLength, type Formatter } from '../lib/units';
-import { resolvePost, resolveTall, type PostInput, type TallInput, type WallAction, type WallInput } from '../state/wall';
+import {
+  resolveIntersection,
+  resolvePost,
+  resolveTall,
+  type IntersectionInput,
+  type PostInput,
+  type TallInput,
+  type WallAction,
+  type WallInput,
+} from '../state/wall';
 import { Field, LengthInput, Panel, Segmented } from './controls';
 import { PlusIcon } from './OpeningsEditor';
 
@@ -12,20 +21,43 @@ interface Props {
   dispatch: Dispatch<WallAction>;
 }
 
-/** Posts under beam bearing, and stretches of wall framed taller than the rest. */
+/** Posts under beam bearing, walls butting in, California corners, and stretches framed taller than the rest. */
 export function StructureEditor({ wall, errorIds, fmt, dispatch }: Props) {
-  const empty = !wall.posts.length && !wall.tall.length;
+  const empty = !wall.posts.length && !wall.tall.length && !wall.intersections.length;
+  const count = (n: number, one: string, many: string) => (n ? `${n} ${n === 1 ? one : many}` : '');
+  const corners = [wall.californiaLeft, wall.californiaRight].filter((c) => c !== 'none').length;
   const parts = [
-    wall.posts.length ? `${wall.posts.length} ${wall.posts.length === 1 ? 'post' : 'posts'}` : '',
-    wall.tall.length ? `${wall.tall.length} tall ${wall.tall.length === 1 ? 'stretch' : 'stretches'}` : '',
+    count(wall.intersections.length, 'intersection', 'intersections'),
+    count(wall.posts.length, 'post', 'posts'),
+    count(corners, 'California corner', 'California corners'),
+    count(wall.tall.length, 'tall stretch', 'tall stretches'),
   ].filter(Boolean);
+  const set = (key: 'californiaLeft' | 'californiaRight') => (value: string) => dispatch({ type: 'set', key, value });
+  const cornerField = (key: 'californiaLeft' | 'californiaRight', label: string) => (
+    <Field label={label}>
+      {(id) => (
+        <select id={id} value={wall[key]} onChange={(e) => set(key)(e.target.value)}>
+          <option value="none">None</option>
+          <option value="2x4">2x4 wall butts in</option>
+          <option value="2x6">2x6 wall butts in</option>
+        </select>
+      )}
+    </Field>
+  );
   return (
-    <Panel
-      tone="structure"
-      title="Structure"
-      summary={parts.join(' · ') || undefined}
-      actions={
+    <Panel tone="structure" title="Structure" summary={parts.join(' · ') || undefined}>
+      <div className="fields">
+        <p className="field-group full">California corners</p>
+        {cornerField('californiaLeft', 'Left end')}
+        {cornerField('californiaRight', 'Right end')}
+        <p className="field-note full">Where a wall butts into an end of this one, a stud laid flat just past it backs the drywall in the inside corner.</p>
+      </div>
+      <div className="ops">
         <div className="btn-row">
+          <button className="btn add structure" type="button" onClick={() => dispatch({ type: 'addIntersection' })}>
+            <PlusIcon />
+            <TeeGlyph /> Intersection
+          </button>
           <button className="btn add structure" type="button" onClick={() => dispatch({ type: 'addPost' })}>
             <PlusIcon />
             <PostGlyph /> Post
@@ -35,15 +67,15 @@ export function StructureEditor({ wall, errorIds, fmt, dispatch }: Props) {
             <TallGlyph /> Tall stretch
           </button>
         </div>
-      }
-    >
-      <div className="ops">
         {empty && (
           <p className="empty">
-            Add a post where a beam bears on this wall, or a tall stretch where it is balloon framed past a floor opening, like a stair. The
-            plates step at each end of a tall stretch per 3/S4.1.
+            Add an intersection where another wall butts in partway along (it gets backer studs and ladder blocking), a post where a beam bears
+            on this wall, or a tall stretch where the top plate steps up per 3/S4.1.
           </p>
         )}
+        {wall.intersections.map((t) => (
+          <IntersectionCard key={t.id} it={t} wall={wall} hasError={errorIds.has(t.id)} fmt={fmt} dispatch={dispatch} />
+        ))}
         {wall.posts.map((p) => (
           <PostCard key={p.id} post={p} wall={wall} hasError={errorIds.has(p.id)} fmt={fmt} dispatch={dispatch} />
         ))}
@@ -52,6 +84,57 @@ export function StructureEditor({ wall, errorIds, fmt, dispatch }: Props) {
         ))}
       </div>
     </Panel>
+  );
+}
+
+function TeeGlyph() {
+  return (
+    <svg className="glyph" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M1.5 3.5h13M1.5 7.5h4.5v7M14.5 7.5H10v7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+interface IntersectionCardProps {
+  it: IntersectionInput;
+  wall: WallInput;
+  hasError: boolean;
+  fmt: Formatter;
+  dispatch: Dispatch<WallAction>;
+}
+
+function IntersectionCard({ it, wall, hasError, fmt, dispatch }: IntersectionCardProps) {
+  const patch = (patch: Partial<IntersectionInput>) => dispatch({ type: 'updateIntersection', id: it.id, patch });
+  const offsetId = useId();
+  const r = resolveIntersection(it, wall);
+  const half = DEPTH[it.size] / 2;
+  return (
+    <article className={`op op-structure${hasError ? ' has-err' : ''}`} aria-label={`Intersection ${it.label}`}>
+      <CardHead
+        kind="Intersection"
+        label={it.label}
+        glyph={<TeeGlyph />}
+        onLabel={(label) => patch({ label })}
+        onRemove={() => dispatch({ type: 'removeIntersection', id: it.id })}
+      />
+      <div className="fields">
+        <div className="field full">
+          <label htmlFor={offsetId}>Position to its centerline</label>
+          <div className="inline">
+            <Segmented bare label="Measure from" value={it.from} options={[['left', 'From left'], ['right', 'From right']]} onChange={(from) => patch({ from })} />
+            <LengthInput id={offsetId} value={it.offset} onChange={(offset) => patch({ offset })} />
+          </div>
+        </div>
+        <Segmented label="Wall butting in" value={it.size} options={[['2x4', '2x4'], ['2x6', '2x6']]} onChange={(size) => patch({ size })} />
+      </div>
+      {typeof r !== 'string' && (
+        <footer className="op-foot">
+          <span>
+            <b>Faces</b> {fmt(r - half)} – {fmt(r + half)} from left
+          </span>
+        </footer>
+      )}
+    </article>
   );
 }
 
