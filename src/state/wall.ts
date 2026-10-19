@@ -1,5 +1,5 @@
-import { TYPICAL_HEADER, isHeaderTypeId, type HeaderTypeId } from '../lib/lumber';
-import type { Issue, LayoutFrom, OpeningSpec, OpeningType, WallSpec } from '../lib/framing';
+import { TYPICAL_HEADER, isHeaderTypeId, isPostTypeId, postType, type HeaderTypeId, type PostTypeId } from '../lib/lumber';
+import type { Issue, LayoutFrom, OpeningSpec, OpeningType, PostSpec, TallSpec, WallSpec } from '../lib/framing';
 import type { CornerType, PanelOrientation } from '../lib/sheathing';
 import { parseLength, toFraction } from '../lib/units';
 
@@ -23,6 +23,25 @@ export interface OpeningInput {
   headHeight: string;
   header: HeaderTypeId | 'auto';
   jacksPerSide: 'auto' | '1' | '2';
+}
+
+/** A post in the wall, positioned to its centerline like an opening. */
+export interface PostInput {
+  id: string;
+  label: string;
+  from: WallEnd;
+  offset: string;
+  type: PostTypeId;
+}
+
+/** A stretch framed to its own height (balloon framing), measured from one end of the wall to each of its ends. */
+export interface TallInput {
+  id: string;
+  label: string;
+  from: WallEnd;
+  start: string;
+  end: string;
+  height: string;
 }
 
 /** Settings a wall can inherit from a project's defaults. */
@@ -60,6 +79,8 @@ export interface WallInput extends WallSettings {
   /** Free text kept with the wall; doesn't affect framing. */
   notes: string;
   openings: OpeningInput[];
+  posts: PostInput[];
+  tall: TallInput[];
 }
 
 export type WallSettingKey = keyof WallSettings | 'name' | 'length' | 'notes';
@@ -97,6 +118,8 @@ export const EXAMPLE_WALL: WallInput = {
     { id: 'o1', type: 'window', label: 'W1', from: 'left', offset: '4-6', width: '3-9', height: '3-7 1/2', ro: '', headHeight: '', header: 'auto', jacksPerSide: 'auto' },
     { id: 'o2', type: 'door', label: 'D1', from: 'right', offset: '5-9', width: '3-0', height: '6-8', ro: '', headHeight: '', header: 'auto', jacksPerSide: 'auto' },
   ],
+  posts: [],
+  tall: [],
 };
 
 const UNIT_DEFAULTS: Record<OpeningType, Pick<OpeningInput, 'width' | 'height'>> = {
@@ -201,7 +224,13 @@ export type WallAction =
   | { type: 'addOpening'; kind: OpeningType }
   | { type: 'updateOpening'; id: string; patch: Partial<OpeningInput> }
   | { type: 'setOpeningType'; id: string; kind: OpeningType }
-  | { type: 'removeOpening'; id: string };
+  | { type: 'removeOpening'; id: string }
+  | { type: 'addPost' }
+  | { type: 'updatePost'; id: string; patch: Partial<PostInput> }
+  | { type: 'removePost'; id: string }
+  | { type: 'addTall' }
+  | { type: 'updateTall'; id: string; patch: Partial<TallInput> }
+  | { type: 'removeTall'; id: string };
 
 const nextLabel = (openings: OpeningInput[], kind: OpeningType, except?: string) => {
   const p = kind === 'door' ? 'D' : 'W';
@@ -255,7 +284,68 @@ export function wallReducer(state: WallInput, action: WallAction): WallInput {
       };
     case 'removeOpening':
       return { ...state, openings: state.openings.filter((o) => o.id !== action.id) };
+    case 'addPost': {
+      let k = 1;
+      while (state.posts.some((p) => p.label === `P${k}`)) k++;
+      const L = parseLength(state.length) || 240;
+      const post: PostInput = { id: newId('p'), label: `P${k}`, from: 'left', offset: toFraction(Math.round(L / 2)), type: '6x6' };
+      return { ...state, posts: [...state.posts, post] };
+    }
+    case 'updatePost':
+      return { ...state, posts: state.posts.map((p) => (p.id === action.id ? { ...p, ...action.patch } : p)) };
+    case 'removePost':
+      return { ...state, posts: state.posts.filter((p) => p.id !== action.id) };
+    case 'addTall': {
+      const L = parseLength(state.length) || 240;
+      const H = parseLength(state.height) || 97.125;
+      const start = Math.round(L / 3);
+      const tall: TallInput = {
+        id: newId('t'),
+        label: state.tall.length ? `Tall ${state.tall.length + 1}` : 'Stair',
+        from: 'left',
+        start: toFraction(start),
+        end: toFraction(Math.min(L, start + 96)),
+        height: toFraction(H + 12),
+      };
+      return { ...state, tall: [...state.tall, tall] };
+    }
+    case 'updateTall':
+      return { ...state, tall: state.tall.map((t) => (t.id === action.id ? { ...t, ...action.patch } : t)) };
+    case 'removeTall':
+      return { ...state, tall: state.tall.filter((t) => t.id !== action.id) };
   }
+}
+
+/** Wall's left end to the post's centerline, or a message. */
+export function resolvePost(p: PostInput, wall: WallInput): { x: number; center: number } | string {
+  const tag = p.label || 'Post';
+  const offset = parseLength(p.offset);
+  if (!isLength(offset)) return `${tag}: enter a valid position.`;
+  if (!isPostTypeId(p.type)) return `${tag}: pick a post size.`;
+  let center = offset;
+  if (p.from === 'right') {
+    const L = parseLength(wall.length);
+    if (!Number.isFinite(L)) return `${tag}: enter a wall length to measure from the right end.`;
+    center = L - offset;
+  }
+  return { x: center - postType(p.type).width / 2, center };
+}
+
+/** A tall stretch's ends from the wall's left end, and its height, or a message. */
+export function resolveTall(t: TallInput, wall: WallInput): { x0: number; x1: number; height: number } | string {
+  const tag = t.label || 'Tall section';
+  const a = parseLength(t.start);
+  const b = parseLength(t.end);
+  const height = parseLength(t.height);
+  if (!isLength(a) || !isLength(b)) return `${tag}: enter valid positions for both ends.`;
+  if (!(height > 0)) return `${tag}: enter a valid height.`;
+  let [x0, x1] = [Math.min(a, b), Math.max(a, b)];
+  if (t.from === 'right') {
+    const L = parseLength(wall.length);
+    if (!Number.isFinite(L)) return `${tag}: enter a wall length to measure from the right end.`;
+    [x0, x1] = [L - x1, L - x0];
+  }
+  return { x0, x1, height };
 }
 
 // ---------- Parsing ----------
@@ -288,6 +378,18 @@ export function toWallSpec(input: WallInput): ParsedWall {
       unit: r.unitWidth > 0 && r.unitHeight > 0 ? { width: r.unitWidth, height: r.unitHeight } : undefined,
     });
   }
+  const posts: PostSpec[] = [];
+  for (const p of input.posts) {
+    const r = resolvePost(p, input);
+    if (typeof r === 'string') inputIssues.push({ level: 'error', openingId: p.id, message: r });
+    else posts.push({ id: p.id, label: p.label || 'Post', x: r.x, type: p.type });
+  }
+  const tall: TallSpec[] = [];
+  for (const t of input.tall) {
+    const r = resolveTall(t, input);
+    if (typeof r === 'string') inputIssues.push({ level: 'error', openingId: t.id, message: r });
+    else tall.push({ id: t.id, label: t.label, ...r });
+  }
   return {
     spec: {
       length: parseLength(input.length),
@@ -308,6 +410,8 @@ export function toWallSpec(input: WallInput): ParsedWall {
         blockSeams: input.blockSeams === 'yes',
       },
       openings,
+      posts,
+      tall,
     },
     inputIssues,
   };

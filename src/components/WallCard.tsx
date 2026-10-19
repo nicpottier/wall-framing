@@ -31,7 +31,9 @@ export function WallCard({ wall, result, issues, href, fmt, fit }: Props) {
         </span>
       </span>
       <span className="wall-card-sub">
-        {result.ok ? `${fmt(result.wall.length)} × ${fmt(result.wall.height)}` : 'Not framed yet'}
+        {result.ok
+          ? `${fmt(result.wall.length)} × ${fmt(result.wall.height)}${result.maxHeight > result.wall.height ? `–${fmt(result.maxHeight)}` : ''}`
+          : 'Not framed yet'}
         {` · ${openings === 0 ? 'no openings' : openings === 1 ? '1 opening' : `${openings} openings`}`}
       </span>
       <div className="wall-card-drawing">

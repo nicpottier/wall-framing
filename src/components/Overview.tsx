@@ -44,7 +44,7 @@ export function Overview(props: Props) {
   const framed = results.flatMap((r) => (r.result.ok ? [r.result] : []));
   const fit = {
     length: Math.max(24, ...framed.map((f) => f.wall.length)),
-    height: Math.max(48, ...framed.map((f) => f.wall.height)),
+    height: Math.max(48, ...framed.map((f) => f.maxHeight)),
     maxHeight: CARD_MAX_HEIGHT,
   };
   const problems = results.reduce((n, r) => n + r.issues.filter((i) => i.level === 'error').length, 0);

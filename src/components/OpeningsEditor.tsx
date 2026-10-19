@@ -42,7 +42,7 @@ export function OpeningsEditor({ wall, errorIds, fmt, dispatch }: Props) {
   );
 }
 
-function PlusIcon() {
+export function PlusIcon() {
   return (
     <svg className="plus" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
       <path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />

@@ -8,6 +8,7 @@ import type { WallResult } from './Overview';
 import { OpeningsEditor } from './OpeningsEditor';
 import { Checks, CutList, Legend, TitleBlock } from './Report';
 import { Segmented } from './controls';
+import { StructureEditor } from './StructureEditor';
 import { SheathingSettings, WallSettings } from './WallSettings';
 
 interface Props {
@@ -34,6 +35,7 @@ export function WallEditor({ index, count, current, dispatch, onBack, onDelete, 
   const errorIds = useMemo(() => {
     const ids = new Set(issues.filter((i) => i.level === 'error' && i.openingId).map((i) => i.openingId!));
     framing?.openings.forEach((o) => o.hasError && ids.add(o.spec.id));
+    framing?.posts.forEach((p) => p.hasError && ids.add(p.spec.id));
     return ids;
   }, [issues, framing]);
 
@@ -88,6 +90,7 @@ export function WallEditor({ index, count, current, dispatch, onBack, onDelete, 
         <aside className="rail">
           <WallSettings wall={wall} dispatch={dispatch} />
           <OpeningsEditor wall={wall} errorIds={errorIds} fmt={fmt} dispatch={dispatch} />
+          <StructureEditor wall={wall} errorIds={errorIds} fmt={fmt} dispatch={dispatch} />
           <SheathingSettings wall={wall} dispatch={dispatch} />
         </aside>
 
@@ -113,7 +116,7 @@ export function WallEditor({ index, count, current, dispatch, onBack, onDelete, 
               <>
                 <Elevation framing={framing} fmt={fmt} highlight={highlight} onHighlight={onHighlight} showSheathing={showSheathing} view={prefs.view} />
                 <div className="sheet-hint">Hover a member to see its size and length.</div>
-                <Legend showSheathing={showSheathing} />
+                <Legend showSheathing={showSheathing} framing={framing} />
                 <TitleBlock framing={framing} name={wall.name} fmt={fmt} />
               </>
             ) : (

@@ -122,11 +122,49 @@ describe('projectToText', () => {
   });
 });
 
+describe('posts and balloon framing', () => {
+  const text = `## Wall
+- length: 20-0
+
+### Posts
+- P1: 6x6, 8-0 from right
+- P2: (3) studs, centered
+
+### Balloon framing
+- Stair: 10-1 7/8 tall, 4-0 to 12-0 from left
+`;
+
+  it('reads posts and tall stretches', () => {
+    const { project, errors } = parseProjectText(text);
+    expect(errors).toEqual([]);
+    const wall = project!.walls[0]!;
+    expect(wall.posts).toMatchObject([
+      { label: 'P1', type: '6x6', from: 'right', offset: '8-0' },
+      { label: 'P2', type: 'studs-3', from: 'left', offset: '120' },
+    ]);
+    expect(wall.tall).toMatchObject([{ label: 'Stair', height: '10-1 7/8', start: '4-0', end: '12-0', from: 'left' }]);
+  });
+
+  it('writes them back out', () => {
+    const { project } = parseProjectText(text);
+    const again = parseProjectText(projectToText(project!));
+    expect(again.project!.walls[0]!.posts).toEqual(project!.walls[0]!.posts);
+    expect(again.project!.walls[0]!.tall).toEqual(project!.walls[0]!.tall);
+  });
+
+  it('explains bad lines', () => {
+    const { errors } = parseProjectText(text.replace('6x6', '8x8').replace('4-0 to 12-0 from left', 'somewhere'));
+    expect(errors.map((e) => e.message)).toEqual([
+      expect.stringContaining('P1: unknown post "8x8"'),
+      expect.stringContaining('Stair: I don\'t understand "somewhere"'),
+    ]);
+  });
+});
+
 describe('first-floor example', () => {
-  it('reads the plans file into ten walls', () => {
+  it('reads the plans file into the main house walls', () => {
     expect(EXAMPLE_PROJECT.walls.map((w) => w.name)).toEqual([
-      'North · garage',
-      'East · garage',
+      'North · garage partition',
       'East · kitchen',
       'East · bay, north return',
       'East · bay',
@@ -134,8 +172,10 @@ describe('first-floor example', () => {
       'East · living',
       'South',
       'West · house',
-      'West · stair',
     ]);
+    const west = EXAMPLE_PROJECT.walls.find((w) => w.name === 'West · house')!;
+    expect(west.tall).toMatchObject([{ label: 'Stair', height: '10-1 7/8', start: '10-2', end: '20-4', from: 'left' }]);
+    expect(EXAMPLE_PROJECT.walls.filter((w) => w.posts.length).map((w) => w.name)).toEqual(['North · garage partition', 'South']);
     expect(EXAMPLE_PROJECT.defaults).toMatchObject({ height: '9-1 1/4', windowHeadHeight: '7-8' });
   });
 });

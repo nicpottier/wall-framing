@@ -1,8 +1,8 @@
 # Buckley-Watanabe residence · first floor
 
-418 Cedar St, Leavenworth. First-floor exterior walls (WT34/WT35, 2x6) from the architectural set: plan A101, window and door schedules A007, levels A200 and section A302. Beams over openings from S2.2 (Harezlak Engineering, Rev. 1); other headers are 4x8 per plan note 3.
+418 Cedar St, Leavenworth. First-floor walls of the main house (exterior WT34/WT35 and the garage partition WT82, 2x6) from the architectural set: plan A101, window and door schedules A007, levels A200 and section A302. Beams, posts and the stair's plate steps from S2.2 (Harezlak Engineering, Rev. 1); other headers are 4x8 per plan note 3.
 
-Left and right are seen from inside. Lengths are framing lengths: the north and south walls run through the corners and the east and west walls butt into them. The garage and house walls split at the garage partition, taken as 5 1/2" north of grid C. Verify in the field.
+Left and right are seen from inside. Lengths are framing lengths: the south wall runs through the corners and the east and west walls butt into it. The house's east and west walls start 5 1/2" north of grid C, past the garage partition on C, which butts between them. The garage walls are left out for now. Verify in the field.
 
 ## Defaults
 - studs: 2x6 @ 16
@@ -18,27 +18,18 @@ Left and right are seen from inside. Lengths are framing lengths: the north and 
 - sheathing: vertical, 2" thick, start 12, double seam studs, block seams
 - corners: left none, right none
 
-## North · garage
-- length: 24-0
-- height: 9-7 3/4
-- corners: left outside, right outside
-
-Garage walls stand on the foundation at the ADU entry level, -1'-0 5/8", up to the top of garage wall at 8'-7 1/8" (A200). Door M is 10'-0" tall from the garage slab at -3'-2", so its rough opening above the foundation is 7'-10 5/8". Garage portal framing per 11/S4.1.
-
-### Openings
-- M: door 16-0 x 10-0, 14-0 from left, header 5 1/2 x 11 7/8 gl, ro 16-0 x 7-10 5/8
-
-## East · garage
+## North · garage partition
 - length: 23-1
-- height: 9-7 3/4
-- head height: 8-2 1/8
-- corners: left inside, right none
+- exterior: no
+- sheathing: vertical, 1/2" thick, start 0, double seam studs, block seams
 
-Window 10 heads are 10'-3 1/2" above the garage slab (A007), 8'-2 1/8" above the foundation.
+Fire-rated partition WT82 (UL305) between the garage and the house, sheathed as shear wall SW-6 (8/S4.0); the sheathing thickness is assumed. Door C is the fire-rated 2'-10" x 6'-8" from the garage (A007), under the 4x12 called out on S2.2. Beam B2 bears on this wall at grid 2, 8'-0" from the outside of the west wall, over a post below (S2.2); P1 carries it down to the P1 post in the basement (S2.1). Plan note 5 calls for (3) studs at least.
 
 ### Openings
-- 10a: window 5-0 x 2-0, 5-6 1/2 from left, header 4x10
-- 10b: window 5-0 x 2-0, 5-0 from right, header 4x10
+- C: door 2-10 x 6-8, 2-6 from left, header 4x12
+
+### Posts
+- P1: 6x6, 7-6 1/2 from left
 
 ## East · kitchen
 - length: 24-5 1/2
@@ -73,15 +64,20 @@ Living room bump-out, 1'-5 3/4" deep (A101).
 - length: 24-0
 - corners: left outside, right outside
 
-Window 1 (3'-0" x 1'-0" fixed, head 8'-0") sits over door A; one rough opening frames both.
+Window 1 (3'-0" x 1'-0" fixed, head 8'-0") sits over door A; one rough opening frames both. Beam B2 bears on this wall at grid 2 over a post below (S2.2), in line with the P1 post in the basement (S2.1).
 
 ### Openings
 - 2: window 6-0 x 5-6, 8-0 from left, header 4x10
 - A: door 3-0 x 6-8, 5-3 1/2 from right, ro 3-2 x 8-0
 
+### Posts
+- P1: 6x6, 8-0 from right
+
 ## West · house
 - length: 34-0
 - corners: left inside, right none
+
+The stair to the second floor (17 risers, A101) runs north along this wall, and the second floor is open over it between the B1 headers, about 9-5 to 21-0 from the left end (S2.2). With no floor framing there, the wall is framed up to the second floor's bottom plate at 10'-1 7/8" (A200), with step plates per 3/S4.1 (S2.2). Windows 4 and 7 frame right up to the opening, so the steps sit just past their king studs. Verify against the framing plan.
 
 ### Openings
 - 4: window 2-0 x 4-0, 8-6 1/2 from left
@@ -89,12 +85,5 @@ Window 1 (3'-0" x 1'-0" fixed, head 8'-0") sits over door A; one rough opening f
 - 6: window 2-0 x 2-0, 8-4 from right
 - 5: window 3-6 x 2-0, 4-3 1/2 from right
 
-## West · stair
-- length: 23-1
-- height: 9-7 3/4
-- corners: left none, right inside
-
-ADU entry door B at the landing, -1'-0 5/8".
-
-### Openings
-- B: door 3-0 x 6-8, 2-0 1/2 from right
+### Balloon framing
+- Stair: 10-1 7/8 tall, 10-2 to 20-4 from left

@@ -8,14 +8,28 @@
  *   - length: 20-0
  *   ### Openings
  *   - W1: window 3-9 x 3-7 1/2, 4-6 from left
+ *   ### Posts
+ *   - P1: 6x6, 8-0 from right
+ *   ### Balloon framing
+ *   - Stair: 10-1 7/8 tall, 12-6 to 24-1 from left
  *
- * Headings split the file into project, defaults and walls; list items are settings or openings;
- * any other text is kept as notes. Positions are to the opening's centerline.
+ * Headings split the file into project, defaults and walls; list items are settings, openings, posts
+ * or tall stretches; any other text is kept as notes. Opening and post positions are to the
+ * centerline; a tall stretch gives both of its ends.
  */
-import { HEADER_TYPES, headerName, headerType, type HeaderTypeId } from '../lib/lumber';
+import { HEADER_TYPES, POST_TYPES, headerName, headerType, postType, type HeaderTypeId, type PostTypeId } from '../lib/lumber';
 import type { CornerType } from '../lib/sheathing';
 import { parseLength, toFraction } from '../lib/units';
-import { DEFAULT_SETTINGS, parseSize, roughOpening, type OpeningInput, type WallInput, type WallSettings } from './wall';
+import {
+  DEFAULT_SETTINGS,
+  parseSize,
+  roughOpening,
+  type OpeningInput,
+  type PostInput,
+  type TallInput,
+  type WallInput,
+  type WallSettings,
+} from './wall';
 import type { Project } from './project';
 
 export interface TextError {
@@ -51,6 +65,13 @@ function findHeader(text: string): HeaderTypeId | null {
   const k = headerKey(text);
   const h = HEADER_TYPES.find((t) => headerKey(t.label) === k || headerKey(t.label).replace(/^p\/t/, '') === k || t.id === k);
   return h ? h.id : null;
+}
+
+/** Matches a post size: "6x6", "(3) studs" or "3 studs". */
+function findPost(text: string): PostTypeId | null {
+  const k = text.toLowerCase().replace(/^post\s+/, '').replace(/[()\s]/g, '').replace(/×/g, 'x');
+  const p = POST_TYPES.find((t) => t.label.replace(/[()\s]/g, '') === k || t.id === k);
+  return p ? p.id : null;
 }
 
 type SettingParser = (value: string) => Partial<WallSettings> | string;
@@ -177,6 +198,8 @@ interface WallDraft {
   line: number;
   hasLength: boolean;
   pending: PendingPosition[];
+  /** Posts centered on the wall, placed once its length is known. */
+  pendingPosts: PostInput[];
 }
 
 export function parseProjectText(text: string): ParseResult {
@@ -190,7 +213,7 @@ export function parseProjectText(text: string): ParseResult {
   const projectNotes: string[] = [];
   const defaults: WallSettings = { ...DEFAULT_SETTINGS };
   const walls: WallDraft[] = [];
-  let section: 'none' | 'defaults' | 'wall' | 'openings' = 'none';
+  let section: 'none' | 'defaults' | 'wall' | 'openings' | 'posts' | 'tall' = 'none';
   let notesTarget: string[] = projectNotes;
   const wallNotes = new Map<WallDraft, string[]>();
   const current = () => walls[walls.length - 1]!;
@@ -216,10 +239,11 @@ export function parseProjectText(text: string): ParseResult {
         notesTarget = projectNotes;
       } else {
         const draft: WallDraft = {
-          wall: { ...defaults, id: `w${walls.length + 1}`, name, length: '', notes: '', openings: [] },
+          wall: { ...defaults, id: `w${walls.length + 1}`, name, length: '', notes: '', openings: [], posts: [], tall: [] },
           line,
           hasLength: false,
           pending: [],
+          pendingPosts: [],
         };
         walls.push(draft);
         notesTarget = [];
@@ -229,17 +253,21 @@ export function parseProjectText(text: string): ParseResult {
       return;
     }
     if ((m = t.match(/^###\s+(.+)$/))) {
-      if (!walls.length || !/^openings$/i.test(m[1]!.trim())) {
-        err(line, walls.length ? `Unknown section "${m[1]}". Walls have one subsection: ### Openings.` : '### Openings must be inside a wall.');
+      const name = words(m[1]!);
+      const sub = name === 'openings' ? 'openings' : name === 'posts' ? 'posts' : /^(balloon( framing)?|tall (sections|stretches))$/.test(name) ? 'tall' : null;
+      if (!walls.length || !sub) {
+        err(line, walls.length ? `Unknown section "${m[1]}". Walls have ### Openings, ### Posts and ### Balloon framing.` : `### ${m[1]} must be inside a wall.`);
         return;
       }
-      section = 'openings';
+      section = sub;
       return;
     }
     if ((m = t.match(/^[-*]\s+(.*)$/))) {
       const item = m[1]!.trim();
       if (section === 'none') return err(line, 'Put settings under ## Defaults or a ## wall heading.');
       if (section === 'openings') return parseOpening(item, line, current(), err);
+      if (section === 'posts') return parsePost(item, line, current(), err);
+      if (section === 'tall') return parseTall(item, line, current(), err);
 
       const kv = item.match(/^([^:]+):\s*(.*)$/);
       if (!kv) return err(line, `Settings are written "key: value". Got "${item}".`);
@@ -356,6 +384,62 @@ function parseOpening(item: string, line: number, draft: WallDraft, err: (line: 
   draft.wall.openings.push(opening);
 }
 
+function parsePost(item: string, line: number, draft: WallDraft, err: (line: number, message: string) => void) {
+  const m = item.match(/^(.+?):\s*(.+)$/);
+  if (!m) return err(line, `Posts are written "P1: 6x6, 8-0 from left". Got "${item}".`);
+  const label = m[1]!.trim();
+  const [sizeText = '', ...rest] = clauses(m[2]!);
+  const tag = `${label}:`;
+  if (draft.wall.posts.some((p) => p.label.toLowerCase() === label.toLowerCase())) {
+    return err(line, `${tag} another post on this wall already uses that label.`);
+  }
+  const type = findPost(sizeText);
+  if (!type) return err(line, `${tag} unknown post "${sizeText}". Use one of: ${POST_TYPES.map((t) => t.label).join(', ')}.`);
+  const post: PostInput = { id: `${draft.wall.id}-post-${label.replace(/[^\w-]/g, '')}`, label, from: 'left', offset: '', type };
+  let placed = false;
+  for (const c of rest) {
+    let k: RegExpMatchArray | null;
+    if ((k = c.match(/^(.+?)\s+from\s+(left|right)$/i))) {
+      if (!isLen(lengthText(k[1]!))) return err(line, `${tag} "${k[1]}" isn't a length.`);
+      post.from = k[2]!.toLowerCase() as 'left' | 'right';
+      post.offset = lengthText(k[1]!);
+      placed = true;
+    } else if (/^cent(er|ered)$/.test(words(c))) {
+      draft.pendingPosts.push(post);
+      placed = true;
+    } else {
+      return err(line, `${tag} I don't understand "${c}".`);
+    }
+  }
+  if (!placed) return err(line, `${tag} add a position to its centerline, like "8-0 from right" or "centered".`);
+  draft.wall.posts.push(post);
+}
+
+function parseTall(item: string, line: number, draft: WallDraft, err: (line: number, message: string) => void) {
+  const m = item.match(/^(.+?):\s*(.+)$/);
+  if (!m) return err(line, `Tall stretches are written "Stair: 10-1 7/8 tall, 12-6 to 24-1 from left". Got "${item}".`);
+  const label = m[1]!.trim();
+  const tag = `${label}:`;
+  const tall: TallInput = { id: `${draft.wall.id}-tall-${label.replace(/[^\w-]/g, '')}`, label, from: 'left', start: '', end: '', height: '' };
+  for (const c of clauses(m[2]!)) {
+    let k: RegExpMatchArray | null;
+    if ((k = c.match(/^(.+?)\s+(?:tall|high)$/i) ?? c.match(/^height\s+(.+)$/i))) {
+      if (!isLen(lengthText(k[1]!))) return err(line, `${tag} height "${k[1]}" isn't a length.`);
+      tall.height = lengthText(k[1]!);
+    } else if ((k = c.match(/^(.+?)\s+to\s+(.+?)\s+from\s+(left|right)$/i))) {
+      if (!isLen(lengthText(k[1]!)) || !isLen(lengthText(k[2]!))) return err(line, `${tag} "${k[1]} to ${k[2]}" should be two lengths.`);
+      tall.start = lengthText(k[1]!);
+      tall.end = lengthText(k[2]!);
+      tall.from = k[3]!.toLowerCase() as 'left' | 'right';
+    } else {
+      return err(line, `${tag} I don't understand "${c}".`);
+    }
+  }
+  if (!tall.height) return err(line, `${tag} add its height, like "10-1 7/8 tall".`);
+  if (!tall.start) return err(line, `${tag} add where it runs, like "12-6 to 24-1 from left".`);
+  draft.wall.tall.push(tall);
+}
+
 /** Positions that depend on the wall length, another opening, or the rough opening height. */
 function resolvePending(draft: WallDraft, err: (line: number, message: string) => void) {
   const { wall } = draft;
@@ -364,6 +448,9 @@ function resolvePending(draft: WallDraft, err: (line: number, message: string) =
     const offset = parseLength(o.offset);
     return o.from === 'left' ? offset : L - offset;
   };
+  for (const p of draft.pendingPosts) {
+    if (Number.isFinite(L)) p.offset = toFraction(L / 2);
+  }
   for (const p of draft.pending) {
     const tag = `${p.opening.label}:`;
     if (p.kind === 'centered') {
@@ -409,6 +496,14 @@ export function projectToText(project: Project): string {
     if (wall.openings.length) {
       out.push('', '### Openings');
       for (const o of wall.openings) out.push(`- ${openingText(o)}`);
+    }
+    if (wall.posts.length) {
+      out.push('', '### Posts');
+      for (const p of wall.posts) out.push(`- ${p.label}: ${postType(p.type).label}, ${p.offset} from ${p.from}`);
+    }
+    if (wall.tall.length) {
+      out.push('', '### Balloon framing');
+      for (const t of wall.tall) out.push(`- ${t.label || 'Tall'}: ${t.height} tall, ${t.start} to ${t.end} from ${t.from}`);
     }
   }
   return out.join('\n') + '\n';

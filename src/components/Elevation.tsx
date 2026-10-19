@@ -116,6 +116,8 @@ function useWidth<E extends HTMLElement>() {
   return [ref, width] as const;
 }
 
+const FULL = ['stud', 'seamStud', 'king', 'post'];
+
 /** Center of the widest gap between members (each T wide, given by left edge) within [lo, hi]. */
 function widestBay(lo: number, hi: number, xs: number[]) {
   let best = { w: -1, c: (lo + hi) / 2 };
@@ -130,8 +132,9 @@ function widestBay(lo: number, hi: number, xs: number[]) {
 
 export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing: sheathingOn, view, fit, compact = false }: Props) {
   const [wrapRef, measured] = useWidth<HTMLDivElement>();
-  const { wall, plateBottom, studLength, members, openings, layout } = framing;
+  const { wall, members, openings, layout, sections, steps } = framing;
   const { length: L, height: H } = wall;
+  const Hmax = framing.maxHeight;
   const orient = ORIENTATION[view];
   const flipped = orient.flipZ;
   const showSheathing = sheathingOn && !compact;
@@ -139,7 +142,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
 
   // Standing, the drawing extends above the wall when sheathing runs past the top plate.
   // On the deck that part isn't on the wall yet, so it isn't shown.
-  const zTop = showSheathing && !flipped ? Math.max(H, framing.sheathing.top) : H;
+  const zTop = showSheathing && !flipped ? Math.max(Hmax, ...sections.map((p) => p.sheathTop)) : Hmax;
   const padL = orient.mirrorX ? pad.end : pad.start;
   const padR = orient.mirrorX ? pad.start : pad.end;
   const padT = flipped ? pad.bottom : pad.top;
@@ -167,20 +170,21 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
   // Bottom plate is drawn in segments around door cut-outs; a lower top plate around raised headers.
   const cuts = openings.flatMap((o) => (o.plateCut ? [o.plateCut] : [])).sort((a, b) => a[0] - b[0]);
   const topCuts = openings.flatMap((o) => (o.topPlateCut ? [o.topPlateCut] : [])).sort((a, b) => a[0] - b[0]);
-  const lowerTopPlateZ = H - wall.topPlates * T;
   const memberEls = members.flatMap((m) => {
-    const segmentCuts =
-      m.role === 'plate' ? cuts : m.role === 'topPlate' && wall.topPlates === 2 && Math.abs(m.z - lowerTopPlateZ) < 1e-6 ? topCuts : [];
+    const end = m.x + m.w;
+    const segmentCuts = (m.role === 'plate' ? cuts : m.lowerPlate ? topCuts : []).filter(([c0, c1]) => c1 > m.x && c0 < end);
     if (!segmentCuts.length) return [rect(m, m.x, m.w, m.id)];
     const els = [];
-    let a = 0;
+    let a = m.x;
     for (const [c0, c1] of segmentCuts) {
       if (c0 > a) els.push(rect(m, a, c0 - a, `${m.id}-${a}`));
       a = Math.max(a, c1);
     }
-    if (a < L) els.push(rect(m, a, L - a, `${m.id}-${a}`));
+    if (a < end) els.push(rect(m, a, end - a, `${m.id}-${a}`));
     return els;
   });
+  const leftSec = sections[0]!;
+  const rightSec = sections[sections.length - 1]!;
 
   // Rows past the bottom plate: layout marks, then chain dimensions to rough-opening edges.
   const pts = [0, ...[...openings].sort((a, b) => a.spec.x - b.spec.x).flatMap((o) => [o.spec.x, o.spec.x + o.spec.width]), L];
@@ -205,12 +209,15 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
       >
         {/* one-foot grid */}
         <g>
-          {Array.from({ length: Math.ceil(L / 12) - 1 }, (_, i) => (i + 1) * 12).map((x) => (
-            <line key={`gx${x}`} className="grid" x1={X(x)} y1={Y(H)} x2={X(x)} y2={Y(0)} />
-          ))}
-          {Array.from({ length: Math.ceil(H / 12) - 1 }, (_, i) => (i + 1) * 12).map((z) => (
-            <line key={`gz${z}`} className="grid" x1={X(0)} y1={Y(z)} x2={X(L)} y2={Y(z)} />
-          ))}
+          {Array.from({ length: Math.ceil(L / 12) - 1 }, (_, i) => (i + 1) * 12).map((x) => {
+            const top = sections.find((p) => x <= p.x1)?.height ?? H;
+            return <line key={`gx${x}`} className="grid" x1={X(x)} y1={Y(top)} x2={X(x)} y2={Y(0)} />;
+          })}
+          {sections.flatMap((p) =>
+            Array.from({ length: Math.ceil(p.height / 12) - 1 }, (_, i) => (i + 1) * 12).map((z) => (
+              <line key={`gz${p.x0}-${z}`} className="grid" x1={X(p.x0)} y1={Y(z)} x2={X(p.x1)} y2={Y(z)} />
+            )),
+          )}
         </g>
 
         <g onMouseLeave={() => onHighlight(null)}>{memberEls}</g>
@@ -233,6 +240,25 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
               );
             })}
 
+        {/* CS16 straps across plate steps, over the sheathing */}
+        {!compact &&
+          steps.map((st) =>
+            st.blocking ? (
+              <line
+                key={`strap${st.x}`}
+                className="strap"
+                x1={X(st.low === 'left' ? Math.max(0, st.x - (st.blocking[1] - st.x)) : st.blocking[0])}
+                x2={X(st.low === 'left' ? st.blocking[1] : Math.min(L, st.x + (st.x - st.blocking[0])))}
+                y1={Y(st.strapZ)}
+                y2={Y(st.strapZ)}
+              >
+                <title>{`CS16 strap over the sheathing across the plate step ${fmt(st.x)} from the left end (3/S4.1)`}</title>
+              </line>
+            ) : null,
+          )}
+
+        {!compact && <PostOverlay framing={framing} fmt={fmt} v={v} />}
+
         {openings.map((o) => (
           <OpeningOverlay key={o.spec.id} o={o} framing={framing} fmt={fmt} v={v} compact={compact} />
         ))}
@@ -242,10 +268,52 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
         {!compact && (
           <>
             {/* overall length */}
-            <HDim x1={X(0)} x2={X(L)} y={Y(zTop) - 30 * bt} label={fmt(L)} ext={Y(H)} />
+            <HDim x1={X(0)} x2={X(L)} y={Y(zTop) - 30 * bt} label={fmt(L)} ext={Y(leftSec.height)} />
             {/* overall height and stud length, off the wall's left end */}
-            <VDim x={X(0) - 70 * sx} y1={Y(H)} y2={Y(0)} label={`WALL ${fmt(H)}`} ext={X(0)} side={v.side('left')} rotate />
-            <VDim x={X(0) - 36 * sx} y1={Y(plateBottom)} y2={Y(T)} label={`STUD ${fmt(studLength)}`} ext={X(0)} side={v.side('left')} rotate />
+            <VDim x={X(0) - 70 * sx} y1={Y(leftSec.height)} y2={Y(0)} label={`WALL ${fmt(leftSec.height)}`} ext={X(0)} side={v.side('left')} rotate />
+            <VDim
+              x={X(0) - 36 * sx}
+              y1={Y(leftSec.plateBottom)}
+              y2={Y(T)}
+              label={`STUD ${fmt(leftSec.studLength)}`}
+              ext={X(0)}
+              side={v.side('left')}
+              rotate
+            />
+            {/* the right end too, when it is a different height */}
+            {sections.length > 1 && Math.abs(rightSec.height - leftSec.height) > 1e-6 && (
+              <>
+                <VDim x={X(L) + 70 * sx} y1={Y(rightSec.height)} y2={Y(0)} label={`WALL ${fmt(rightSec.height)}`} ext={X(L)} side={v.side('right')} rotate />
+                <VDim
+                  x={X(L) + 36 * sx}
+                  y1={Y(rightSec.plateBottom)}
+                  y2={Y(T)}
+                  label={`STUD ${fmt(rightSec.studLength)}`}
+                  ext={X(L)}
+                  side={v.side('right')}
+                  rotate
+                />
+              </>
+            )}
+            {/* stretches framed to their own height: length, height and stud length */}
+            {sections
+              .filter((p) => p.tall && p !== leftSec && p !== rightSec)
+              .map((p) => {
+                const studs = members.filter((m) => FULL.includes(m.role) && m.x >= p.x0 && m.x + m.w <= p.x1).map((m) => m.x);
+                return (
+                  <g key={`tall${p.x0}`}>
+                    <HDim x1={X(p.x0)} x2={X(p.x1)} y={Y(p.height) - 14 * bt} label={`${(p.tall!.label || 'TALL').toUpperCase()} ${fmt(p.x1 - p.x0)} · ${fmt(p.height)} TALL`} ext={Y(p.height)} />
+                    <VDim
+                      x={X(widestBay(p.x0, p.x1, studs))}
+                      y1={Y(p.plateBottom)}
+                      y2={Y(T)}
+                      label={`STUD ${fmt(p.studLength)}`}
+                      side={v.side('right')}
+                      rotate={false}
+                    />
+                  </g>
+                );
+              })}
 
             {/* layout marks */}
             <text className="cap" x={v.left - 10} y={v.textAt(layoutY, 7, 15, bt)} textAnchor="end">
@@ -371,61 +439,86 @@ interface SheathingProps {
 
 /** Panel seams over the framing, seam positions past the top plate, and seam heights off the right end. */
 function SheathingOverlay({ framing, fmt, v, aboveWall }: SheathingProps) {
-  const { wall, sheathing: sh } = framing;
-  const { length: L, height: H } = wall;
+  const { wall, sheathing: sh, sections } = framing;
+  const { length: L } = wall;
   const { X, Y, sx, bt } = v;
   const out: Dir = bt === 1 ? -1 : 1; // screen direction out past the top
   const left = -sh.extLeft;
   const right = L + sh.extRight;
-  // Highest sheathing drawn, and whether a top edge past the wall is being left off.
-  const top = aboveWall ? sh.top : Math.min(sh.top, H);
-  const cutOff = sh.top > top;
-  const tickY = Y(Math.max(H, top)) + 48 * out;
+  // Each stretch of the wall at its own height: the sheathing over it, and whether a top edge past
+  // the wall is being left off. A stretch at a wall end carries the corner extension.
+  const rows = sections.map((p, i) => {
+    const top = aboveWall ? p.sheathTop : Math.min(p.sheathTop, p.height);
+    return {
+      p,
+      top,
+      cutOff: p.sheathTop > top,
+      x0: i === 0 ? left : p.x0,
+      x1: i === sections.length - 1 ? right : p.x1,
+      seams: p.seams.filter((z) => z <= top + 1e-6),
+    };
+  });
+  const first = rows[0]!;
+  const last = rows[rows.length - 1]!;
+  const rowAt = (x: number) => rows.find((r) => x <= r.p.x1 + 1e-6) ?? last;
+  const tickY = Y(Math.max(framing.maxHeight, ...rows.map((r) => r.top))) + 48 * out;
   // Sheathing hung on the deck runs from the first full row up to its top; the strip below and any
   // row mostly on the wall above go on after the wall is stood.
-  const bottom = Math.min(wall.sheathing.startHeight, top);
-  const seams = sh.horizontalSeams.filter((z) => z <= top + 1e-6);
-  // Seams, then the wall top and the sheathing top, measured up from the floor.
-  const chain = [...new Set([0, ...seams, ...(top > H ? [H, top] : [top])])].sort((a, b) => a - b);
+  const bottom = Math.min(wall.sheathing.startHeight, ...rows.map((r) => r.top));
+  // Seams, then the wall top and the sheathing top at the right end, measured up from the floor.
+  const H = last.p.height;
+  const chain = [...new Set([0, ...last.seams, ...(last.top > H ? [H, last.top] : [last.top])])].sort((a, b) => a - b);
   const dimX = X(right) + 28 * sx;
   const cornerTitle = (ext: number, end: string) =>
     `Sheathing runs ${fmt(ext)} past the ${end} end of the framing to the outside corner`;
+  // Label each distinct top once, on the first stretch that has it.
+  const labelled = new Set<number>();
 
   return (
     <g className="sheath">
-      {/* sheathing above the top plate, and its top edge */}
-      {top > H && (
-        <>
-          <rect className="sh-above" {...v.box(left, H, right - left, top - H)} />
-          {sh.extLeft === 0 && <line className="sh-edge" x1={X(0)} y1={Y(top)} x2={X(0)} y2={Y(H)} />}
-          {sh.extRight === 0 && <line className="sh-edge" x1={X(L)} y1={Y(top)} x2={X(L)} y2={Y(H)} />}
-        </>
-      )}
-      {!cutOff && (
-        <>
-          <line className="sh-top" x1={X(left)} y1={Y(top)} x2={X(right)} y2={Y(top)}>
-            <title>{`Top of sheathing ${fmt(top)} from the floor${top > H ? `, ${fmt(top - H)} above the top plate` : ''}`}</title>
-          </line>
-          <text className="sh-t halo" x={Math.min(X(left), X(right)) + 4} y={v.textAt(Y(top), 4, 12, top > H ? out : bt)}>
-            {`TOP OF SHEATHING ${fmt(top)}`}
-          </text>
-        </>
-      )}
+      {rows.map((r) => {
+        const showLabel = !r.cutOff && !labelled.has(r.top);
+        labelled.add(r.top);
+        return (
+          <g key={`row${r.p.x0}`}>
+            {/* sheathing above the top plate, and its top edge */}
+            {r.top > r.p.height && <rect className="sh-above" {...v.box(r.x0, r.p.height, r.x1 - r.x0, r.top - r.p.height)} />}
+            {!r.cutOff && (
+              <line className="sh-top" x1={X(r.x0)} y1={Y(r.top)} x2={X(r.x1)} y2={Y(r.top)}>
+                <title>{`Top of sheathing ${fmt(r.top)} from the floor${r.top > r.p.height ? `, ${fmt(r.top - r.p.height)} above the top plate` : ''}`}</title>
+              </line>
+            )}
+            {showLabel && (
+              <text className="sh-t halo" x={Math.min(X(r.x0), X(r.x1)) + 4} y={v.textAt(Y(r.top), 4, 12, r.top > r.p.height ? out : bt)}>
+                {`TOP OF SHEATHING ${fmt(r.top)}`}
+              </text>
+            )}
+            {r.seams.map((z) => (
+              <line key={`hs${z}`} className="sh-seam" x1={X(r.x0)} y1={Y(z)} x2={X(r.x1)} y2={Y(z)} />
+            ))}
+          </g>
+        );
+      })}
+      {/* where stretches meet, the taller one's sheathing edge */}
+      {rows.slice(1).map((r, i) => {
+        const prev = rows[i]!;
+        if (Math.abs(r.top - prev.top) < 1e-6) return null;
+        return <line key={`se${r.p.x0}`} className="sh-edge" x1={X(r.p.x0)} y1={Y(Math.max(r.top, prev.top))} x2={X(r.p.x0)} y2={Y(Math.min(r.top, prev.top))} />;
+      })}
+      {first.top > first.p.height && sh.extLeft === 0 && <line className="sh-edge" x1={X(0)} y1={Y(first.top)} x2={X(0)} y2={Y(first.p.height)} />}
+      {last.top > last.p.height && sh.extRight === 0 && <line className="sh-edge" x1={X(L)} y1={Y(last.top)} x2={X(L)} y2={Y(last.p.height)} />}
       {sh.extLeft > 0 && (
-        <line className="sh-edge" x1={X(left)} y1={Y(top)} x2={X(left)} y2={Y(bottom)}>
+        <line className="sh-edge" x1={X(left)} y1={Y(first.top)} x2={X(left)} y2={Y(bottom)}>
           <title>{cornerTitle(sh.extLeft, 'left')}</title>
         </line>
       )}
       {sh.extRight > 0 && (
-        <line className="sh-edge" x1={X(right)} y1={Y(top)} x2={X(right)} y2={Y(bottom)}>
+        <line className="sh-edge" x1={X(right)} y1={Y(last.top)} x2={X(right)} y2={Y(bottom)}>
           <title>{cornerTitle(sh.extRight, 'right')}</title>
         </line>
       )}
       {sh.verticalSeams.map((s) => (
-        <line key={`vs${s.x}`} className="sh-seam" x1={X(s.x)} y1={Y(top)} x2={X(s.x)} y2={Y(bottom)} />
-      ))}
-      {seams.map((z) => (
-        <line key={`hs${z}`} className="sh-seam" x1={X(left)} y1={Y(z)} x2={X(right)} y2={Y(z)} />
+        <line key={`vs${s.x}`} className="sh-seam" x1={X(s.x)} y1={Y(rowAt(s.x).top)} x2={X(s.x)} y2={Y(bottom)} />
       ))}
 
       {/* seam positions, measured from the layout end */}
@@ -454,6 +547,33 @@ function SheathingOverlay({ framing, fmt, v, aboveWall }: SheathingProps) {
           side={v.side('right')}
         />
       ))}
+    </g>
+  );
+}
+
+/** Each post's label, size and centerline. */
+function PostOverlay({ framing, fmt, v }: { framing: Framing; fmt: Formatter; v: ViewMap }) {
+  const { X, Y } = v;
+  return (
+    <g>
+      {framing.posts
+        .filter((p) => !p.hasError)
+        .map((p) => {
+          const cx = X((p.x0 + p.x1) / 2);
+          const sec = framing.sections.find((s) => p.x0 >= s.x0 - 1e-6 && p.x1 <= s.x1 + 1e-6) ?? framing.sections[0]!;
+          const label = `${p.spec.label} · ${p.type.label}`;
+          const cy = Y(sec.plateBottom * 0.62);
+          return (
+            <g key={p.spec.id}>
+              <line className="post-cl" x1={cx} y1={Y(sec.plateBottom)} x2={cx} y2={Y(T)}>
+                <title>{`${p.spec.label} centerline, ${fmt((p.x0 + p.x1) / 2)} from the left end`}</title>
+              </line>
+              <text className="post-t halo" x={cx} y={cy} textAnchor="middle" transform={`rotate(-90 ${cx} ${cy})`} dy={4}>
+                {label}
+              </text>
+            </g>
+          );
+        })}
     </g>
   );
 }

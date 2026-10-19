@@ -15,6 +15,8 @@ const NO_SHEATHING_EFFECTS: SheathingSpec = {
   blockSeams: true,
 };
 
+const sheathing = (over: Partial<SheathingSpec> = {}): SheathingSpec => ({ ...NO_SHEATHING_EFFECTS, ...over });
+
 const wall = (over: Partial<WallSpec> = {}): WallSpec => ({
   length: 240,
   height: 97.125,
@@ -228,7 +230,6 @@ describe('conflicts', () => {
 });
 
 describe('sheathing', () => {
-  const sheathing = (over: Partial<SheathingSpec> = {}): SheathingSpec => ({ ...NO_SHEATHING_EFFECTS, ...over });
 
   it('pulls layout in by the sheathing thickness at an outside corner', () => {
     const f = frame(wall({ sheathing: sheathing({ thickness: 2, corners: { left: 'outside', right: 'none' } }) }));
@@ -314,5 +315,123 @@ describe('sheathing', () => {
   it('can turn blocking off', () => {
     const f = frame(wall({ sheathing: sheathing({ startHeight: 12, blockSeams: false }) }));
     expect(of(f, 'blocking')).toHaveLength(0);
+  });
+});
+
+describe('posts', () => {
+  it('replaces the layout studs it covers with a 6x6', () => {
+    // A 6x6 from 45 1/4 to 50 3/4 covers the stud on 48.
+    const f = frame(wall({ posts: [{ id: 'p', label: 'P1', x: 45.25, type: '6x6' }] }));
+    const [post, ...rest] = of(f, 'post');
+    expect(rest).toHaveLength(0);
+    expect(post).toMatchObject({ x: 45.25, w: 5.5, size: '6x6', length: f.studLength });
+    expect(of(f, 'stud').some((m) => m.layoutCenter === 48)).toBe(false);
+    expect(of(f, 'stud').some((m) => m.layoutCenter === 32)).toBe(true);
+    expect(f.posts[0]!.hasError).toBe(false);
+  });
+
+  it('builds up studs as separate plies', () => {
+    const f = frame(wall({ posts: [{ id: 'p', label: 'P', x: 100, type: 'studs-3' }] }));
+    expect(xs(f, 'post')).toEqual([100, 101.5, 103]);
+    expect(f.cutList.find((g) => g.role === 'post')!.qty).toBe(3);
+  });
+
+  it('takes the place of the end stud at a wall end', () => {
+    const f = frame(wall({ posts: [{ id: 'p', label: 'P', x: 0, type: '6x6' }] }));
+    expect(of(f, 'stud').some((m) => m.isEnd && m.x === 0)).toBe(false);
+    expect(of(f, 'stud').some((m) => m.isEnd && m.x === 238.5)).toBe(true);
+  });
+
+  it('is an error over an opening', () => {
+    const f = frame(wall({ openings: [opening()], posts: [{ id: 'p', label: 'P1', x: 50, type: '6x6' }] }));
+    expect(f.issues.some((i) => i.level === 'error' && i.message.startsWith('P1: overlaps W1'))).toBe(true);
+    expect(of(f, 'post')).toHaveLength(0);
+  });
+
+  it('backs a sheathing seam that lands on it', () => {
+    const f = frame(wall({ sheathing: sheathing({ seamStuds: 'double' }), posts: [{ id: 'p', label: 'P', x: 45, type: '6x6' }] }));
+    expect(of(f, 'seamStud').some((m) => m.x > 40 && m.x < 52)).toBe(false);
+  });
+});
+
+describe('plate steps', () => {
+  // The stair stretch rises to the second floor's bottom plate, 10'-1 7/8".
+  const tall = { id: 't', label: 'Stair', x0: 96, x1: 192, height: 121.875 };
+  const f = frame(wall({ height: 109.25, tall: [tall] }));
+
+  it('splits the wall into stretches with their own plates and stud lengths', () => {
+    expect(f.sections.map((p) => [p.x0, p.x1, p.height])).toEqual([
+      [0, 96, 109.25],
+      [96, 192, 121.875],
+      [192, 240, 109.25],
+    ]);
+    expect(f.maxHeight).toBe(121.875);
+    expect(f.sections[1]!.studLength).toBeCloseTo(117.375);
+    expect(of(f, 'topPlate').filter((m) => m.z > 115)).toHaveLength(2);
+    expect(of(f, 'topPlate').filter((m) => m.z > 115).every((m) => m.x === 96 && m.w === 96)).toBe(true);
+  });
+
+  it('puts (2) studs each side of each step', () => {
+    const step = of(f, 'stud').filter((m) => m.isStep);
+    expect(step.map((m) => [m.x, m.length])).toEqual([
+      [94.5, 104.75],
+      [96, 117.375],
+      [93, 104.75],
+      [97.5, 117.375],
+      [190.5, 117.375],
+      [192, 104.75],
+      [189, 117.375],
+      [193.5, 104.75],
+    ]);
+    expect(f.steps.map((s) => [s.x, s.low])).toEqual([
+      [96, 'left'],
+      [192, 'right'],
+    ]);
+  });
+
+  it('blocks 4\'-0" into the tall side in line with the lower plates', () => {
+    const [left, right] = f.steps;
+    expect(left!.blocking![0]).toBe(99);
+    expect(left!.blocking![1] - 96).toBeGreaterThanOrEqual(48);
+    expect(192 - right!.blocking![0]).toBeGreaterThanOrEqual(48);
+    for (const b of of(f, 'stepBlocking')) {
+      expect(b.z + b.h / 2).toBeCloseTo(109.25 - 1.5);
+      expect(b.x).toBeGreaterThanOrEqual(96);
+      expect(b.x + b.w).toBeLessThanOrEqual(192);
+    }
+    expect(f.issues.filter((i) => i.message.includes('CS16'))).toHaveLength(2);
+  });
+
+  it('frames openings to their own stretch', () => {
+    const g = frame(wall({ height: 109.25, tall: [tall], openings: [opening({ x: 120, width: 30, sill: 60 })] }));
+    const king = of(g, 'king')[0]!;
+    expect(king.length).toBeCloseTo(117.375);
+    expect(g.openings[0]!.headerTop).toBeCloseTo(121.875 - 3);
+  });
+
+  it('flags an opening across a step', () => {
+    const g = frame(wall({ height: 109.25, tall: [tall], openings: [opening({ x: 80, width: 30 })] }));
+    expect(g.issues.some((i) => i.level === 'error' && i.message.includes('plate step'))).toBe(true);
+  });
+
+  it('runs to the end of the wall without a step there', () => {
+    const g = frame(wall({ height: 109.25, tall: [{ ...tall, x0: 120, x1: 240 }] }));
+    expect(g.steps).toHaveLength(1);
+    expect(of(g, 'stud').find((m) => m.isEnd && m.x === 238.5)!.length).toBeCloseTo(117.375);
+  });
+
+  it('rejects stretches that leave no room for step studs', () => {
+    const g = frame(wall({ height: 109.25, tall: [{ ...tall, x0: 2 }] }));
+    expect(g.sections).toHaveLength(1);
+    expect(g.issues.some((i) => i.level === 'error' && i.message.startsWith('Stair: leaves only'))).toBe(true);
+  });
+
+  it('gives tall stretches their own sheathing rows', () => {
+    const g = frame(wall({ height: 109.25, tall: [{ ...tall, x1: 240, height: 220 }], sheathing: sheathing({ startHeight: 12 }) }));
+    expect(g.sections[1]!.seams).toEqual([12, 108, 204]);
+    expect(g.sections[1]!.sheathTop).toBe(204);
+    // the step blocking backs the 108 seam near the step; plain seam blocking takes over past it
+    expect(of(g, 'blocking').some((b) => b.x >= 160 && b.seamHeight === 108)).toBe(true);
+    expect(of(g, 'blocking').some((b) => b.x < 140 && b.x > 96 && b.seamHeight === 108)).toBe(false);
   });
 });

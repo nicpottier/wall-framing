@@ -92,15 +92,25 @@ export function sheathingLayout(wall: {
     verticalSeams.push({ x: fromRight ? L - distance : distance, distance });
   }
 
+  const { horizontalSeams, top } = panelRows(s, H);
+
+  return { panel, extLeft, extRight, extOrigin, verticalSeams, horizontalSeams, top };
+}
+
+/**
+ * Horizontal seams within a wall (or a stretch of it) of the given height, and the top of the
+ * sheathing hung before it is stood: the last panel row that is mostly on this wall.
+ */
+export function panelRows(s: SheathingSpec, height: number): { horizontalSeams: number[]; top: number } {
+  const panel = panelSize(s.orientation);
   const horizontalSeams: number[] = [];
   for (let k = Math.max(0, Math.ceil(-s.startHeight / panel.height)); ; k++) {
     const z = s.startHeight + k * panel.height;
-    if (z >= H - EPS) break;
+    if (z >= height - EPS) break;
     if (z > EPS) horizontalSeams.push(z);
   }
 
   let top = s.startHeight;
-  while (top < H - EPS && Math.min(top + panel.height, H) - top > panel.height / 2 + EPS) top += panel.height;
-
-  return { panel, extLeft, extRight, extOrigin, verticalSeams, horizontalSeams, top };
+  while (top < height - EPS && Math.min(top + panel.height, height) - top > panel.height / 2 + EPS) top += panel.height;
+  return { horizontalSeams, top };
 }

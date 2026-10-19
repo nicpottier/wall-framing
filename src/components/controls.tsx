@@ -94,7 +94,7 @@ interface PanelProps {
   /** Render as a closable section that starts closed. */
   collapsible?: boolean;
   /** Section color. */
-  tone?: 'wall' | 'openings' | 'sheathing';
+  tone?: 'wall' | 'openings' | 'sheathing' | 'structure';
   children: ReactNode;
 }
 

@@ -72,7 +72,7 @@ export function projectReducer(state: Project, action: ProjectAction): Project {
     case 'selectWall':
       return { ...state, selected: Math.max(0, Math.min(action.index, state.walls.length - 1)) };
     case 'addWall': {
-      const wall: WallInput = { ...state.defaults, id: newId('w'), name: nextWallName(state.walls), length: '10-0', notes: '', openings: [] };
+      const wall: WallInput = { ...state.defaults, id: newId('w'), name: nextWallName(state.walls), length: '10-0', notes: '', openings: [], posts: [], tall: [] };
       return { ...state, walls: [...state.walls, wall], selected: state.walls.length };
     }
     case 'removeWall': {
@@ -103,7 +103,7 @@ function upgradeWall(w: Partial<WallInput>, index: number): WallInput {
   const openings = (w.openings ?? []).map(
     (o): OpeningInput => ({ ...o, ro: o.ro ?? '', header: isHeaderTypeId(o.header) ? o.header : 'auto' }),
   );
-  return { ...DEFAULT_SETTINGS, ...w, id: w.id ?? `w${index + 1}`, notes: w.notes ?? '', openings } as WallInput;
+  return { ...DEFAULT_SETTINGS, ...w, id: w.id ?? `w${index + 1}`, notes: w.notes ?? '', openings, posts: w.posts ?? [], tall: w.tall ?? [] } as WallInput;
 }
 
 /** v2 positions were to the near rough-opening edge; move them to the centerline so nothing shifts. */

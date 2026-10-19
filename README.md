@@ -33,7 +33,8 @@ src/
     Dimensions.tsx Drafting primitives (HDim / VDim)
     Overview.tsx, WallCard.tsx  All walls at a glance, cut list and text tabs
     WallEditor.tsx  One wall: form, drawing, cut list, checks
-    WallSettings.tsx, OpeningsEditor.tsx, Report.tsx (cut list, checks, legend, title block)
+    WallSettings.tsx, OpeningsEditor.tsx, StructureEditor.tsx (posts, tall stretches)
+    Report.tsx    Cut list, checks, legend, title block
   useRoute.ts     Overview vs wall editor from the address (#/wall/N)
   App.tsx         Wires state -> engine -> screens
 ```
@@ -44,7 +45,7 @@ The data flow is one way: **form or `.wall.md` text → `toWallSpec` → `comput
 
 A project holds several walls. The **overview** shows every wall as a card (size, openings, anything to fix, and a small drawing at a shared scale), with tabs for the project's combined **Cut list** and its **Text**. Clicking a card opens that wall's **editor** (form, dimensioned drawing, cut list and checks) at `#/wall/N`; **← All walls**, the browser's Back button, and the ‹ › arrows move between them.
 
-The example (**Load example**) is the first floor of the Buckley-Watanabe residence, written as [`src/state/examples/first-floor.wall.md`](src/state/examples/first-floor.wall.md): ten exterior walls from the architectural plans (A101, A007, A200, A302) with beams from the structural plans (S2.2). Its notes record the assumptions made reading the plans.
+The example (**Load example**) is the first floor of the Buckley-Watanabe residence, written as [`src/state/examples/first-floor.wall.md`](src/state/examples/first-floor.wall.md): the main house's walls (the garage is left out for now) from the architectural plans (A101, A007, A200, A302), with beams, posts and the stair's plate steps from the structural plans (S2.2). Its notes record the assumptions made reading the plans.
 
 ## Wall spec text (`.wall.md`)
 
@@ -69,11 +70,19 @@ The overview's **Text** tab edits the whole project as plain text, kept in sync 
 - W1: window 3-9 x 3-7 1/2, 4-6 from left
 - W2: window 3046, 4-1 1/2 after W1, head 7-0
 - D1: door 3068, 5-9 from right, header 4x10
+
+### Posts
+- P1: 6x6, 8-0 from right
+
+### Balloon framing
+- Stair: 10-1 7/8 tall, 12-6 to 24-1 from left
 ```
 
 - `## Defaults` applies to every wall below it; a wall's own settings override it. Other text is kept as notes; `<!-- -->` comments are dropped.
 - Settings: `length`, `height`, `studs`, `layout`, `top plate`, `exterior`, `headers`, `head height`, `rough sill`, `window ro`, `door ro`, `sheathing`, `corners`.
 - Openings: `<label>: <window|door> <W x H or callout>, <position>`, then any of `head`, `sill`, `header`, `jacks`, `ro W x H`.
+- Posts (under `### Posts`): `<label>: <6x6|4x6|4x4|(2) studs|(3) studs|(4) studs>, <position to centerline>`.
+- Tall stretches (under `### Balloon framing`): `<label>: <height> tall, <near> to <far> from <left|right>`, giving both ends of the stretch.
 - Positions are to the centerline: `4-6 from left`, `5-9 from right`, `4-1 1/2 after W1` (centerline to centerline), or `centered`. "after" and "centered" become plain positions when the form rewrites the text.
 
 ## Framing conventions
@@ -105,16 +114,22 @@ Left and right are always as seen **from inside** the building. Enter opening po
 
 ### Headers (Buckley-Watanabe structural plans, Harezlak Engineering, Rev. 1, 05/22/26)
 
-- **Types**: 4x8 is typical over all openings (S2.1/S2.2 plan note 3, U.O.N.). The header picker also lists the larger sizes from the beam schedule: 4x10, P/T 6x10, 3½×11⅞ LVL, 5½×11⅞ GL, 5¼×14 LVL and 3½×18 LVL. Auto uses 4x8; pick the larger size where the plans call one out. Headers narrower than the 5½" wall get rigid foam to fill.
+- **Types**: 4x8 is typical over all openings (S2.1/S2.2 plan note 3, U.O.N.). The header picker also lists the larger sizes from the beam schedule and plan: 4x10, 4x12, P/T 6x10, 3½×11⅞ LVL, 5½×11⅞ GL, 5¼×14 LVL and 3½×18 LVL. Auto uses 4x8; pick the larger size where the plans call one out. Headers narrower than the 5½" wall get rigid foam to fill.
 - **Under plate** (default, 10/S4.1): the header sits tight under the top plates. A flat head plate defines the top of the rough opening, doubled at exterior openings over 8'-0", with cripples (2" or more) or a ripped filler between it and the header. If a deep header only fits by rising into the double top plate, the lower plate is cut and an MSTA24 strap is noted.
 - **On opening**: the header sits on the jacks at the top of the rough opening, with cripples or filler up to the plates.
 - **Trimmers**: (2) per side at headers over 6'-0" long, otherwise (1) (10/S4.1). Exterior headers over 6'-0" get A35 clips.
+
+### Posts and balloon framing
+
+- **Posts** sit where a beam bears on the wall (S2.2 shows a post below each end of B2; plan note 5 calls for (3) studs minimum at beam ends). A post replaces the layout studs it covers, or the end stud at a wall end, backs any sheathing seam that lands on it, and is an error over an opening's framing or a plate step. Built-up posts list each stud.
+- **Tall stretches** frame part of a wall to its own height, like balloon framing past the second floor at the stair (S2.2: "step plate per 3/S4.1"). The stretch gets its own double top plate and stud length; openings inside it frame to it. At each step (3/S4.1): (2) studs each side, 2x4 flat blocking on the tall side in line with the lower plates for at least 4'-0", and a CS16 strap over the sheathing ((14) 8d to the plates, (5) 8d to each block). Sheathing rows and seam blocking follow each stretch's height.
 
 ## Ideas for next steps
 
 - Corner and T-intersection framing at wall ends (California corners, ladder blocking)
 - Fire blocking, mid-height blocking, and sheathing layout overlay
 - Multiple walls per project with a combined lumber order (stock-length optimization)
-- Point loads and posts ((3) studs min. under beam ends per plan note 4), stud wall type A (1¾×5½ LSL @ 12")
+- Built-up stud counts from the structural plans' diamonds, stud wall type A (1¾×5½ LSL @ 12")
+- The garage walls, with their lower foundation and taller plates
 - Plate layout marking sheet and printable / PDF export
 - Undo/redo, keyboard nudge for openings, metric units

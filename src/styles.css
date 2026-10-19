@@ -16,6 +16,7 @@
   --sec-wall: #8a5a26;
   --on-op: #ffffff;
   --sec-openings: #6a48b8;
+  --sec-structure: #2b6f7a;
   --win-tint: #edf3fc;
   --door: #c2560c;
   --door-tint: #fcf1e8;
@@ -42,6 +43,8 @@
   --on-header: #fff8ec;
   --w-seam: #d3d9ad;
   --w-block: #aebb84;
+  --w-post: #a8773f;
+  --w-step: #d9b97a;
   --sheath: #0d7f66;
 
   --f-ui: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -65,12 +68,10 @@
     --accent: #7cb1f2;
     --dim: #a3b3c2;
     --win: #6ea8ff;
-  --sec-wall: #d6a36b;
-  --on-op: #0e1317;
-  --sec-openings: #b39cf2;
     --sec-wall: #d6a36b;
     --on-op: #0e1317;
     --sec-openings: #b39cf2;
+    --sec-structure: #6cc3cf;
     --win-tint: #16263b;
     --door: #f0954f;
     --door-tint: #34220f;
@@ -95,6 +96,8 @@
     --on-header: #1d140a;
     --w-seam: #7a8150;
     --w-block: #8d9a5c;
+    --w-post: #b98949;
+    --w-step: #7c6a43;
     --sheath: #4fcfab;
     color-scheme: dark;
   }
@@ -113,6 +116,10 @@
   --accent: #7cb1f2;
   --dim: #a3b3c2;
   --win: #6ea8ff;
+  --sec-wall: #d6a36b;
+  --on-op: #0e1317;
+  --sec-openings: #b39cf2;
+  --sec-structure: #6cc3cf;
   --win-tint: #16263b;
   --door: #f0954f;
   --door-tint: #34220f;
@@ -137,6 +144,8 @@
   --on-header: #1d140a;
   --w-seam: #7a8150;
   --w-block: #8d9a5c;
+  --w-post: #b98949;
+  --w-step: #7c6a43;
   --sheath: #4fcfab;
   color-scheme: dark;
 }
@@ -237,6 +246,9 @@ body {
 }
 .panel[data-tone='sheathing'] {
   --tone: var(--sheath);
+}
+.panel[data-tone='structure'] {
+  --tone: var(--sec-structure);
 }
 .panel[data-tone] {
   border-color: color-mix(in srgb, var(--tone) 30%, var(--line));
@@ -503,6 +515,17 @@ input.invalid {
   --op: var(--door);
   --op-tint: var(--door-tint);
 }
+.op-structure {
+  --op: var(--sec-structure);
+  --op-tint: color-mix(in srgb, var(--sec-structure) 8%, var(--panel));
+}
+.op-kind {
+  margin-left: auto;
+  font: 600 11px var(--f-cond);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--on-op) 85%, transparent);
+}
 .op.has-err {
   --op: var(--err);
   --op-tint: var(--err-bg);
@@ -618,6 +641,9 @@ input.invalid {
 }
 .btn.add.door {
   color: var(--door);
+}
+.btn.add.structure {
+  color: var(--sec-structure);
 }
 .empty {
   margin: 0;
@@ -1093,6 +1119,13 @@ a.brand {
   align-items: center;
   gap: 6px;
 }
+.sw-strap {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--sec-structure);
+  display: inline-block;
+}
 .sw {
   width: 16px;
   height: 10px;
@@ -1166,6 +1199,32 @@ a.brand {
 .m-filler {
   fill: var(--w-filler);
   stroke-dasharray: 3 2;
+}
+.m-post {
+  fill: var(--w-post);
+}
+.m-stepBlocking {
+  fill: var(--w-step);
+}
+.strap {
+  stroke: var(--sec-structure);
+  stroke-width: 2;
+  stroke-dasharray: 8 3;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+.post-cl {
+  stroke: var(--sec-structure);
+  stroke-width: 0.9;
+  stroke-dasharray: 10 3 2 3;
+  opacity: 0.8;
+  pointer-events: none;
+}
+.post-t {
+  font: 600 11px var(--f-cond);
+  letter-spacing: 0.06em;
+  fill: var(--sec-structure);
+  pointer-events: none;
 }
 .m.hl {
   stroke: var(--accent);
