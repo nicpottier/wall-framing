@@ -849,6 +849,7 @@ textarea::placeholder {
 
 /* ---------- Overview ---------- */
 .overview {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -876,11 +877,14 @@ textarea::placeholder {
 }
 .wall-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  min-width: 0;
   gap: 16px;
   align-items: start;
 }
 .wall-card {
+  overflow: hidden;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -931,6 +935,10 @@ textarea::placeholder {
 .wall-card-drawing .svg-wrap {
   min-height: 0;
   overflow: hidden;
+}
+.wall-card-drawing svg {
+  display: block;
+  max-width: 100%;
 }
 .wall-card-error {
   display: block;

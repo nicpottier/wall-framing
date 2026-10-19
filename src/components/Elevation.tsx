@@ -193,8 +193,10 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
     <div className="svg-wrap" ref={wrapRef}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width={width}
-        height={height}
+        // Compact drawings scale with their container so they can never push it wider.
+        width={compact ? '100%' : width}
+        height={compact ? undefined : height}
+        style={compact ? { height: 'auto', aspectRatio: `${width} / ${height}` } : undefined}
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label={flipped ? 'Wall framing as laid out on the deck' : 'Wall framing elevation from inside'}
