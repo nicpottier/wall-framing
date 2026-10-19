@@ -294,6 +294,9 @@ function OpeningOverlay({ o, framing, fmt, v }: OverlayProps) {
       <rect className={`ro ${spec.type}${err}`} {...v.box(spec.x, o.roBottom, spec.width, spec.height)} />
       <line className={`ro-x ${spec.type}`} x1={xl} y1={yTop} x2={xr} y2={yBot} />
       <line className={`ro-x ${spec.type}`} x1={xr} y1={yTop} x2={xl} y2={yBot} />
+      <line className={`ro-cl ${spec.type}`} x1={cx} y1={yTop} x2={cx} y2={yBot}>
+        <title>{`${spec.label} centerline, ${fmt(spec.x + spec.width / 2)} from the left end`}</title>
+      </line>
       <text className={`ro-t halo ${spec.type}${err}`} x={cx} y={cy - 2} textAnchor="middle">
         {title}
       </text>

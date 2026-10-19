@@ -2,7 +2,7 @@ import { useId, type Dispatch } from 'react';
 import type { OpeningType } from '../lib/framing';
 import { HEADER_TYPES, TYPICAL_HEADER, headerName, headerType } from '../lib/lumber';
 import type { Formatter } from '../lib/units';
-import { resolveOpening, type OpeningInput, type WallAction, type WallInput, type WallSettingKey } from '../state/wall';
+import { parseSize, resolveOpening, roughOpening, type OpeningInput, type WallAction, type WallInput, type WallSettingKey } from '../state/wall';
 import { Chevron, Field, LengthInput, Panel, Segmented } from './controls';
 
 interface Props {
@@ -79,7 +79,11 @@ function OpeningCard({ opening: o, wall, hasError, fmt, dispatch }: CardProps) {
   const len = (key: 'offset' | 'width' | 'height' | 'headHeight') => (value: string) => patch({ [key]: value });
   const kind = o.type === 'window' ? 'Window' : 'Door';
   const r = resolveOpening(o, wall);
-  const ids = { label: useId(), offset: useId(), width: useId(), height: useId() };
+  const ids = { label: useId(), offset: useId(), width: useId(), height: useId(), ro: useId() };
+  // What the allowance would give, shown as the placeholder for an explicit rough opening.
+  const fromAllowance = roughOpening({ ...o, ro: '' }, wall);
+  const roPlaceholder = typeof fromAllowance === 'string' ? 'W x H' : `${fmt(fromAllowance.width).replace(/"$/, '')} x ${fmt(fromAllowance.height).replace(/"$/, '')}`;
+  const roInvalid = o.ro.trim() !== '' && !parseSize(o.ro);
 
   return (
     <article className={`op op-${o.type}${hasError ? ' has-err' : ''}`} aria-label={`${kind} ${o.label}`}>
@@ -113,7 +117,7 @@ function OpeningCard({ opening: o, wall, hasError, fmt, dispatch }: CardProps) {
 
       <div className="fields">
         <div className="field full">
-          <label htmlFor={ids.offset}>Position to R.O. edge</label>
+          <label htmlFor={ids.offset}>Position to centerline</label>
           <div className="inline">
             <Segmented bare label="Measure from" value={o.from} options={[['left', 'From left'], ['right', 'From right']]} onChange={(from) => patch({ from })} />
             <LengthInput id={ids.offset} value={o.offset} onChange={len('offset')} />
@@ -132,6 +136,20 @@ function OpeningCard({ opening: o, wall, hasError, fmt, dispatch }: CardProps) {
             </label>
           </div>
         </div>
+        <div className="field full">
+          <label htmlFor={ids.ro}>Rough opening (W × H)</label>
+          <input
+            id={ids.ro}
+            type="text"
+            autoComplete="off"
+            className={roInvalid ? 'invalid' : undefined}
+            aria-invalid={roInvalid}
+            value={o.ro}
+            placeholder={roPlaceholder}
+            onChange={(e) => patch({ ro: e.target.value })}
+          />
+          <span className="hint">{o.ro.trim() ? 'Set here instead of from the allowance' : 'Blank adds the allowance to the unit size'}</span>
+        </div>
         {o.type === 'window' && (
           <Field label="Head height" hint={o.headHeight.trim() ? 'Overrides the wall' : 'From the wall'}>
             {(id) => <LengthInput id={id} value={o.headHeight} onChange={len('headHeight')} optional placeholder={wall.windowHeadHeight} />}
@@ -140,7 +158,7 @@ function OpeningCard({ opening: o, wall, hasError, fmt, dispatch }: CardProps) {
         <Field label="Header">
           {(id) => (
             <select id={id} value={o.header} onChange={(e) => patch({ header: e.target.value as OpeningInput['header'] })}>
-              <option value="auto">Auto ({headerName(headerType(TYPICAL_HEADER))})</option>
+              <option value="auto">Auto ({headerName(headerType(wall.defaultHeader))})</option>
               {HEADER_TYPES.map((h) => (
                 <option key={h.id} value={h.id}>
                   {headerName(h)}
@@ -171,7 +189,7 @@ function OpeningCard({ opening: o, wall, hasError, fmt, dispatch }: CardProps) {
             </span>
           )}
           <span>
-            <b>From left</b> {fmt(r.x)}
+            <b>Edges</b> {fmt(r.x)} – {fmt(r.x + r.roWidth)} from left
           </span>
         </footer>
       )}
@@ -182,7 +200,7 @@ function OpeningCard({ opening: o, wall, hasError, fmt, dispatch }: CardProps) {
 /** Wall-wide rules for sizing rough openings from window and door unit sizes, shown above the cards. */
 function RoughOpeningDefaults({ wall, dispatch }: { wall: WallInput; dispatch: Dispatch<WallAction> }) {
   const set = (key: WallSettingKey) => (value: string) => dispatch({ type: 'set', key, value });
-  const summary = `Head ${wall.windowHeadHeight || '—'}" · ${wall.headerMount === 'dropped' ? 'headers under plate' : 'headers on opening'} · window +${wall.windowRoWidth}/${wall.windowRoHeight} · door +${wall.doorRoWidth}/${wall.doorRoHeight}`;
+  const summary = `Head ${wall.windowHeadHeight || '—'}" · ${headerName(headerType(wall.defaultHeader))} ${wall.headerMount === 'dropped' ? 'under plate' : 'on opening'} · window +${wall.windowRoWidth}/${wall.windowRoHeight} · door +${wall.doorRoWidth}/${wall.doorRoHeight}`;
 
   return (
     <details className="subpanel">
@@ -198,6 +216,17 @@ function RoughOpeningDefaults({ wall, dispatch }: { wall: WallInput; dispatch: D
           {(id) => <LengthInput id={id} value={wall.windowHeadHeight} onChange={set('windowHeadHeight')} />}
         </Field>
         <Segmented label="Rough sill" value={wall.sillPlies} options={[['1', 'Single'], ['2', 'Double']]} onChange={set('sillPlies')} />
+        <Field label="Default header" hint={`Typical per plan note 3: ${headerName(headerType(TYPICAL_HEADER))}`}>
+          {(id) => (
+            <select id={id} value={wall.defaultHeader} onChange={(e) => set('defaultHeader')(e.target.value)}>
+              {HEADER_TYPES.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {headerName(h)}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
         <Segmented
           full
           label="Headers"

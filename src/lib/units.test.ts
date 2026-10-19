@@ -13,11 +13,20 @@ describe('parseLength', () => {
     [`8'-1 1/8"`, 97.125],
     ["8' 1-1/8", 97.125],
     ['8ft 1 1/8in', 97.125],
+    ['3-0', 36],
+    ['4-6', 54],
+    ['4-6 1/2', 54.5],
+    ['4-6-1/2', 54.5],
+    ['6-8', 80],
+    ['8-1 1/8', 97.125],
+    ['20-0', 240],
+    ['12-6"', 150],
+    ['1-1/8', 1.125],
   ])('reads %s', (raw, expected) => {
     expect(parseLength(raw)).toBeCloseTo(expected);
   });
 
-  it.each(['', 'abc', '5/0', "x'", '12 apples'])('rejects %j', (raw) => {
+  it.each(['', 'abc', '5/0', "x'", '12 apples', '5-14', '4-6 1/0'])('rejects %j', (raw) => {
     expect(parseLength(raw)).toBeNaN();
   });
 });

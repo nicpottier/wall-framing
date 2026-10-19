@@ -29,7 +29,7 @@ export function WallSettings({ wall, dispatch }: Props) {
             <input id={id} type="text" className="plain" autoComplete="off" value={wall.name} onChange={(e) => set('name')(e.target.value)} />
           )}
         </Field>
-        <Field label="Length" hint={`20' · 240 · 12'-6 1/2"`}>
+        <Field label="Length" hint="20-0 · 240 · 12-6 1/2">
           {(id) => <LengthInput id={id} value={wall.length} onChange={set('length')} />}
         </Field>
         <div className="field">
@@ -64,6 +64,11 @@ export function WallSettings({ wall, dispatch }: Props) {
         <Segmented label="Layout from" value={wall.layoutFrom} options={[['left', 'Left'], ['right', 'Right']]} onChange={set('layoutFrom')} />
         <Segmented label="Top plate" value={wall.topPlates} options={[['1', 'Single'], ['2', 'Double']]} onChange={set('topPlates')} />
         <Segmented label="Exterior wall" value={wall.exterior} options={[['yes', 'Yes'], ['no', 'No']]} onChange={set('exterior')} />
+        <Field label="Notes" full>
+          {(id) => (
+            <textarea id={id} className="notes" rows={2} value={wall.notes} placeholder="Anything the crew should know" onChange={(e) => set('notes')(e.target.value)} />
+          )}
+        </Field>
       </div>
     </Panel>
   );

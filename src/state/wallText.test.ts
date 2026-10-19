@@ -1,0 +1,153 @@
+import { describe, expect, it } from 'vitest';
+import { parseProjectText, projectToText } from './wallText';
+import { EXAMPLE_PROJECT, loadSaved, type Project } from './project';
+import { resolveOpening, type WallInput } from './wall';
+
+const SAMPLE = `# Buckley-Watanabe residence
+
+Framing per structural plans Rev. 1, 05/22/26.
+
+## Defaults
+- studs: 2x6 @ 16
+- top plate: double
+- exterior: yes
+- headers: 4x8, tight under plate
+- head height: 6-10 1/2
+- window ro: +3 x +3
+- door ro: +2 x +2 1/2
+- sheathing: vertical, 2" thick, start 12, double seam studs, block seams
+
+## Wall A · south
+- length: 20-0
+- height: 8-1 1/8
+- corners: left outside, right inside
+
+<!-- confirm W2 with the owner -->
+
+### Openings
+- W1: window 3-9 x 3-7 1/2, 4-6 from left
+- W2: window 3046, 4-1 1/2 after W1, head 7-0
+- D1: door 3068, 5-9 from right, header 4x10
+
+## Wall B · east
+- length: 14-6
+- layout: from right
+
+Kitchen wall.
+
+### Openings
+- W3: window 5-0 x 3-0, centered, sill 3-6, jacks 2, header 3 1/2 x 11 7/8 lvl
+`;
+
+function parse(text: string): Project {
+  const r = parseProjectText(text);
+  if (!r.project) throw new Error(r.errors.map((e) => `${e.line}: ${e.message}`).join('\n'));
+  return r.project;
+}
+
+const errorsOf = (text: string) => parseProjectText(text).errors;
+
+/** Walls without ids, for comparing a round trip. */
+const shape = (p: Project) => ({
+  ...p,
+  walls: p.walls.map(({ id: _id, openings, ...w }) => ({ ...w, openings: openings.map(({ id: _oid, ...o }) => o) })),
+});
+
+describe('parseProjectText', () => {
+  const p = parse(SAMPLE);
+  const [a, b] = p.walls as [WallInput, WallInput];
+
+  it('reads the project, defaults and walls', () => {
+    expect(p.title).toBe('Buckley-Watanabe residence');
+    expect(p.notes).toBe('Framing per structural plans Rev. 1, 05/22/26.');
+    expect(p.walls.map((w) => w.name)).toEqual(['Wall A · south', 'Wall B · east']);
+    expect(p.defaults).toMatchObject({ spacing: '16', windowHeadHeight: '6-10 1/2', sheathingThickness: '2', doorRoHeight: '2 1/2' });
+  });
+
+  it('applies defaults to every wall and lets a wall override them', () => {
+    expect(a).toMatchObject({ length: '20-0', height: '8-1 1/8', cornerLeft: 'outside', cornerRight: 'inside', layoutFrom: 'left' });
+    expect(b).toMatchObject({ length: '14-6', layoutFrom: 'right', cornerLeft: 'none', windowHeadHeight: '6-10 1/2' });
+  });
+
+  it('keeps notes but not hidden comments', () => {
+    expect(b.notes).toBe('Kitchen wall.');
+    expect(a.notes).toBe('');
+  });
+
+  it('reads openings with dash lengths, callouts and centerline positions', () => {
+    const [w1, w2, d1] = a.openings;
+    expect(w1).toMatchObject({ label: 'W1', type: 'window', width: '3-9', height: '3-7 1/2', from: 'left', offset: '4-6' });
+    // 4-6 + 4-1 1/2 between centerlines
+    expect(w2).toMatchObject({ width: '3-0', height: '4-6', from: 'left', offset: '103 1/2', headHeight: '7-0' });
+    expect(d1).toMatchObject({ type: 'door', width: '3-0', height: '6-8', from: 'right', offset: '5-9', header: '4x10' });
+    expect(resolveOpening(w1!, a)).toMatchObject({ x: 30, roWidth: 48 });
+  });
+
+  it('centers openings and turns a sill height into a head height', () => {
+    const [w3] = b.openings;
+    expect(w3).toMatchObject({ offset: '87', jacksPerSide: '2', header: 'lvl-3.5x11.875' });
+    // sill 42 + RO height 36 + 3
+    expect(w3!.headHeight).toBe('81');
+  });
+
+  it('reports problems by line', () => {
+    expect(errorsOf('## A\n- length: 10-0\n- colour: blue')).toEqual([{ line: 3, message: expect.stringMatching(/Unknown setting "colour"/) }]);
+    expect(errorsOf('## A\n- length: 10-0\n### Openings\n- W1: window 3x4, 2-0 from left')[0]).toMatchObject({ line: 4 });
+    expect(errorsOf('## A\n- length: 10-0\n### Openings\n- W1: window 3046')[0]?.message).toMatch(/add a position/);
+    expect(errorsOf('## A\n- length: 10-0\n### Openings\n- W2: window 3046, 2-0 after W1')[0]?.message).toMatch(/after W1/);
+    expect(errorsOf('## A\n- length: 10-0\n### Openings\n- W1: window 3046, 5-14 from left')[0]?.message).toMatch(/isn't a length/);
+    expect(errorsOf('- studs: 2x6 @ 16')[0]?.message).toMatch(/Defaults or a ## wall/);
+    expect(errorsOf('## A\n- height: 8-0')[0]).toMatchObject({ line: 1, message: expect.stringMatching(/add a length/) });
+    expect(errorsOf('## A\n- length: 10-0\n- studs: 2x6 @ 18')[0]?.message).toMatch(/12, 16, 19.2 or 24/);
+    expect(errorsOf('# Only a title')[0]?.message).toMatch(/at least one wall/);
+  });
+});
+
+describe('projectToText', () => {
+  it('round-trips the example project', () => {
+    expect(shape(parse(projectToText(EXAMPLE_PROJECT)))).toEqual(shape(EXAMPLE_PROJECT));
+  });
+
+  it('round-trips a parsed file', () => {
+    const p = parse(SAMPLE);
+    expect(shape(parse(projectToText(p)))).toEqual(shape(p));
+  });
+
+  it('writes only settings that differ from the defaults', () => {
+    const text = projectToText(parse(SAMPLE));
+    const wallB = text.slice(text.indexOf('## Wall B'));
+    expect(wallB).toMatch(/- layout: from right/);
+    expect(wallB).not.toMatch(/- studs:/);
+    expect(text).toMatch(/- W1: window 3-9 x 3-7 1\/2, 4-6 from left\n/);
+  });
+});
+
+describe('loadSaved', () => {
+  it('moves v2 positions from the rough opening edge to the centerline', () => {
+    const store = new Map<string, string>();
+    const v2 = {
+      name: 'Old wall',
+      length: "20'",
+      height: '97 1/8',
+      windowRoWidth: '3',
+      windowRoHeight: '3',
+      doorRoWidth: '2',
+      doorRoHeight: '2 1/2',
+      units: 'ftin',
+      openings: [
+        { id: 'o1', type: 'window', label: 'W1', from: 'left', offset: '30', width: '45', height: '43 1/2', headHeight: '', header: '2x8', jacksPerSide: 'auto' },
+        { id: 'o2', type: 'door', label: 'D1', from: 'right', offset: '50', width: '36', height: '80', headHeight: '', header: 'auto', jacksPerSide: 'auto' },
+      ],
+    };
+    store.set('wall-framing-planner.v2', JSON.stringify(v2));
+    globalThis.localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: () => {} } as unknown as Storage;
+
+    const { project, prefs } = loadSaved();
+    const wall = project.walls[0]!;
+    expect(prefs.units).toBe('ftin');
+    expect(wall.openings.map((o) => o.offset)).toEqual(['54', '69']);
+    expect(wall.openings[0]!.header).toBe('auto');
+    expect(resolveOpening(wall.openings[0]!, wall)).toMatchObject({ x: 30 });
+    expect(resolveOpening(wall.openings[1]!, wall)).toMatchObject({ x: 152 });
+  });
+});

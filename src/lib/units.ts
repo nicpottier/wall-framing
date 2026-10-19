@@ -2,8 +2,10 @@ export type Units = 'in' | 'ftin';
 
 /**
  * Parses a tape-measure style length into inches.
- * Accepts: 240, 240.5, 92 5/8, 92-5/8", 20', 20ft, 8'-1 1/8", 8' 1-1/8
- * Returns NaN when the text can't be read.
+ * Accepts: 240, 240.5, 92 5/8, 92-5/8", 20', 20ft, 8'-1 1/8", 8' 1-1/8,
+ * and framer's feet-dash-inches: 3-0, 4-6, 4-6 1/2, 4-6-1/2.
+ * A whole number after a dash means feet and inches (4-6 is 54"); a fraction right after a
+ * dash means inches and a fraction (92-5/8 is 92 5/8"). Returns NaN when the text can't be read.
  */
 export function parseLength(raw: string | null | undefined): number {
   if (raw == null) return NaN;
@@ -15,6 +17,15 @@ export function parseLength(raw: string | null | undefined): number {
     .replace(/\s*(feet|foot|ft)\b/g, "'")
     .replace(/\s*(inches|inch|in)\b/g, '"');
   if (!s) return NaN;
+
+  const dash = s.match(/^(\d+)-(\d+)(?:[\s-]+(\d+)\/(\d+))?"?$/);
+  if (dash) {
+    const inches = Number(dash[2]);
+    const num = dash[3] == null ? 0 : Number(dash[3]);
+    const den = dash[4] == null ? 1 : Number(dash[4]);
+    if (inches >= 12 || den === 0) return NaN;
+    return Number(dash[1]) * 12 + inches + num / den;
+  }
 
   let feet = 0;
   let rest = s;

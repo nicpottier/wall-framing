@@ -25,7 +25,9 @@ src/
     lumber.ts     Lumber constants, the project's header types (from the structural plans), precut lengths
     framing.ts    The framing engine: WallSpec in -> members, openings, issues, cut list out
   state/
-    wall.ts       Form state as typed text, rough-opening resolution, reducer, parsing to WallSpec, localStorage
+    wall.ts       One wall's form state as typed text, rough-opening resolution, reducer, parsing to WallSpec
+    project.ts    Several walls with shared defaults, display preferences, localStorage and migrations
+    wallText.ts   The .wall.md text format: parser (errors by line) and writer
   components/
     Elevation.tsx SVG elevation drawing and dimensions
     Dimensions.tsx Drafting primitives (HDim / VDim)
@@ -33,14 +35,45 @@ src/
   App.tsx         Wires state -> engine -> views
 ```
 
-The data flow is one way: **form text → `toWallSpec` → `computeFraming` → views**. The engine knows nothing about React or the DOM, so new framing rules belong in `lib/` along with a test.
+The data flow is one way: **form or `.wall.md` text → `toWallSpec` → `computeFraming` → views**. The engine knows nothing about React or the DOM, so new framing rules belong in `lib/` along with a test.
+
+## Wall spec text (`.wall.md`)
+
+The **Text** tab edits the whole project as plain text, kept in sync with the form. Text that reads cleanly updates the drawing as you type; problems are listed by line.
+
+```markdown
+# Buckley-Watanabe residence
+
+## Defaults
+- studs: 2x6 @ 16
+- headers: 4x8, tight under plate
+- head height: 6-10 1/2
+- window ro: +3 x +3
+- door ro: +2 x +2 1/2
+- sheathing: vertical, 2" thick, start 12, double seam studs, block seams
+
+## Wall A · south
+- length: 20-0
+- corners: left outside, right inside
+
+### Openings
+- W1: window 3-9 x 3-7 1/2, 4-6 from left
+- W2: window 3046, 4-1 1/2 after W1, head 7-0
+- D1: door 3068, 5-9 from right, header 4x10
+```
+
+- `## Defaults` applies to every wall below it; a wall's own settings override it. Other text is kept as notes; `<!-- -->` comments are dropped.
+- Settings: `length`, `height`, `studs`, `layout`, `top plate`, `exterior`, `headers`, `head height`, `rough sill`, `window ro`, `door ro`, `sheathing`, `corners`.
+- Openings: `<label>: <window|door> <W x H or callout>, <position>`, then any of `head`, `sill`, `header`, `jacks`, `ro W x H`.
+- Positions are to the centerline: `4-6 from left`, `5-9 from right`, `4-1 1/2 after W1` (centerline to centerline), or `centered`. "after" and "centered" become plain positions when the form rewrites the text.
 
 ## Framing conventions
 
 - Wall height is measured from the floor to the top of the top plate. Stud length = height − bottom plate − top plate(s). A 97 1/8" wall gets 92 5/8" precuts.
 - Openings are entered by unit size (the window or door itself). The rough opening is the unit size plus the wall's allowances, set separately for window and door width and height.
 - Window sills come from the head height (floor to top of rough opening). It is set once for the wall and can be overridden per window. Sill = head height − rough opening height.
-- Each opening is located from the left or right end of the wall, to the near edge of its rough opening.
+- Each opening is located from the left or right end of the wall to its **centerline**; the rough opening is centered on it.
+- Lengths can be typed framer-style: `4-6` is 4'-6", `4-6 1/2` adds a fraction, `92-5/8` is 92 5/8", plain numbers are inches. Opening sizes also take four-digit callouts: `3046` is 3'-0" × 4'-6".
 - Layout marks put stud centers on the spacing, measured from the chosen end, so sheathing edges land on studs. End studs sit flush at both ends.
 - Each opening gets a king stud on each side and jack studs (trimmers) under the header.
 - Windows get a rough sill (single or double) on cripples: one at each end plus one on each layout mark.

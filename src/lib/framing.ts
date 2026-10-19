@@ -2,7 +2,6 @@ import {
   DEPTH,
   PRECUTS,
   T,
-  TYPICAL_HEADER,
   WALL_DEPTH,
   headerName,
   headerType,
@@ -49,6 +48,8 @@ export interface WallSpec {
    * the rough opening (10/S4.1). onJacks: header sits on the jacks at the top of the opening.
    */
   headerMount: 'dropped' | 'onJacks';
+  /** Header used by openings set to Auto (4x8 typical per plan note 3). */
+  defaultHeader: HeaderTypeId;
   /** Exterior walls get doubled head plates on long openings and A35 clips on long headers. */
   exterior: boolean;
   sillPlies: 1 | 2;
@@ -265,8 +266,7 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
       issue('error', `${tag}: king stud runs into the end stud. Move the opening at least ${fmt(kingRight + T - (L - T))} to the left.`, spec.id);
     }
 
-    // Plan note 3: 4x8 unless the plan calls out a larger member.
-    const header = headerType(spec.header === 'auto' ? TYPICAL_HEADER : spec.header);
+    const header = headerType(spec.header === 'auto' ? wall.defaultHeader : spec.header);
     const name = headerName(header);
     const dropped = wall.headerMount === 'dropped';
     let headerTop: number;

@@ -22,6 +22,7 @@ const wall = (over: Partial<WallSpec> = {}): WallSpec => ({
   layoutFrom: 'left',
   topPlates: 2,
   headerMount: 'dropped',
+  defaultHeader: '4x8',
   exterior: true,
   sillPlies: 1,
   sheathing: NO_SHEATHING_EFFECTS,
