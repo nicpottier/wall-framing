@@ -745,29 +745,6 @@ details.panel[open] .chev {
   opacity: 0.4;
 }
 
-/* ---------- Rail top: form/text tabs and wall picker ---------- */
-.rail-top {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.rail-top > .seg {
-  display: flex;
-}
-.rail-top > .seg button {
-  height: 36px;
-  font-size: 14px;
-}
-.wall-picker {
-  display: flex;
-  gap: 8px;
-  min-width: 0;
-}
-.wall-picker select {
-  flex: 1;
-  min-width: 0;
-  height: 32px;
-}
 .btn:disabled {
   opacity: 0.45;
   cursor: default;
@@ -870,51 +847,181 @@ textarea::placeholder {
   margin: 0;
 }
 
-/* ---------- Drawing sheet ---------- */
-.wall-sheet.selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+/* ---------- Overview ---------- */
+.overview {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1640px;
+  margin: 0 auto;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-.wall-sheet-head {
+.overview-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px 16px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--line-2);
+  gap: 12px 20px;
 }
-.wall-sheet-title {
+.overview-head h1 {
+  margin: 0;
+  font: 600 22px/1.2 var(--f-cond);
+  text-wrap: balance;
+}
+.overview-head .sub {
+  font: 400 12.5px var(--f-mono);
+  color: var(--muted);
+}
+.wall-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.wall-card {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 12px;
+  flex-direction: column;
+  gap: 4px;
   min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
+  padding: 14px 14px 8px;
+  background: var(--sheet);
+  border: 1px solid var(--line);
+  border-radius: 6px;
   color: var(--ink);
+  text-decoration: none;
+  font: inherit;
   text-align: left;
   cursor: pointer;
 }
-.wall-sheet-title .name {
-  font: 600 16px/1.2 var(--f-cond);
+.wall-card:hover {
+  border-color: var(--accent);
 }
-.wall-sheet-title .sub {
+.wall-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.wall-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.wall-card-name {
+  font: 600 16px/1.25 var(--f-cond);
+  min-width: 0;
+}
+.wall-card:hover .wall-card-name {
+  color: var(--accent);
+}
+.wall-card-flags {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.wall-card-sub {
   font: 400 12px var(--f-mono);
   color: var(--muted);
 }
-.wall-sheet-title:hover .name {
+.wall-card-drawing {
+  margin-top: 6px;
+  min-width: 0;
+}
+.wall-card-drawing .svg-wrap {
+  min-height: 0;
+  overflow: hidden;
+}
+.wall-card-error {
+  display: block;
+  padding: 24px 0;
+  color: var(--err);
+  font-size: 13px;
+}
+.wall-card.add {
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  gap: 6px;
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+}
+.wall-card.add:hover {
   color: var(--accent);
 }
-.wall-sheet-flags {
+.add-plus {
+  font: 300 32px/1 var(--f-ui);
+}
+.overview-text {
+  display: grid;
+  grid-template-columns: minmax(0, 480px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .overview-text {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- Wall editor navigation ---------- */
+.editor-nav {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  max-width: 1640px;
+  margin: 0 auto;
+  padding-block: 16px 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.editor-nav .btn {
+  text-decoration: none;
+}
+.editor-nav-pos {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font: 500 13px var(--f-mono);
+  color: var(--muted);
+}
+.editor-nav-end {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
 }
-.wall-sheet .svg-wrap {
-  min-height: 0;
+.btn.icon {
+  width: 32px;
+  justify-content: center;
+  padding: 0;
+  font-size: 18px;
 }
+.btn[aria-disabled='true'] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.btn.danger {
+  background: var(--err);
+  border-color: var(--err);
+  color: var(--panel);
+}
+.confirm-text {
+  font-size: 13px;
+  color: var(--err);
+}
+a.brand {
+  color: inherit;
+  text-decoration: none;
+}
+.layout {
+  padding-top: 16px;
+}
+
+/* ---------- Drawing sheet ---------- */
 
 .sheet {
   background: var(--sheet);

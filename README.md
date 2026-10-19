@@ -31,21 +31,24 @@ src/
   components/
     Elevation.tsx SVG elevation drawing and dimensions
     Dimensions.tsx Drafting primitives (HDim / VDim)
+    Overview.tsx, WallCard.tsx  All walls at a glance, cut list and text tabs
+    WallEditor.tsx  One wall: form, drawing, cut list, checks
     WallSettings.tsx, OpeningsEditor.tsx, Report.tsx (cut list, checks, legend, title block)
-  App.tsx         Wires state -> engine -> views
+  useRoute.ts     Overview vs wall editor from the address (#/wall/N)
+  App.tsx         Wires state -> engine -> screens
 ```
 
 The data flow is one way: **form or `.wall.md` text → `toWallSpec` → `computeFraming` → views**. The engine knows nothing about React or the DOM, so new framing rules belong in `lib/` along with a test.
 
 ## Projects and the example
 
-A project holds several walls. **All walls** shows every wall at one shared scale with a combined cut list and checks labelled by wall; **This wall** shows the selected wall alone. Click a wall's name or **Edit** to edit it in the form.
+A project holds several walls. The **overview** shows every wall as a card (size, openings, anything to fix, and a small drawing at a shared scale), with tabs for the project's combined **Cut list** and its **Text**. Clicking a card opens that wall's **editor** (form, dimensioned drawing, cut list and checks) at `#/wall/N`; **← All walls**, the browser's Back button, and the ‹ › arrows move between them.
 
 The example (**Load example**) is the first floor of the Buckley-Watanabe residence, written as [`src/state/examples/first-floor.wall.md`](src/state/examples/first-floor.wall.md): ten exterior walls from the architectural plans (A101, A007, A200, A302) with beams from the structural plans (S2.2). Its notes record the assumptions made reading the plans.
 
 ## Wall spec text (`.wall.md`)
 
-The **Text** tab edits the whole project as plain text, kept in sync with the form. Text that reads cleanly updates the drawing as you type; problems are listed by line.
+The overview's **Text** tab edits the whole project as plain text, kept in sync with the form. Text that reads cleanly updates the drawing as you type; problems are listed by line.
 
 ```markdown
 # Buckley-Watanabe residence

@@ -24,10 +24,13 @@ interface Props {
    * maxHeight px, instead of fitting this wall alone.
    */
   fit?: { length: number; height: number; maxHeight: number };
+  /** Framing and openings only, with no dimensions or callouts, for small overview drawings. */
+  compact?: boolean;
 }
 
 /** Margins around the wall, named by wall side so they follow it when the view flips. */
 const PAD = { start: 108, end: 96, top: 92, bottom: 100 };
+const COMPACT_PAD = { start: 12, end: 12, top: 12, bottom: 12 };
 const MIN_WIDTH = 720;
 const MAX_HEIGHT = 620;
 
@@ -125,21 +128,23 @@ function widestBay(lo: number, hi: number, xs: number[]) {
   return best.c;
 }
 
-export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing, view, fit }: Props) {
+export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing: sheathingOn, view, fit, compact = false }: Props) {
   const [wrapRef, measured] = useWidth<HTMLDivElement>();
   const { wall, plateBottom, studLength, members, openings, layout } = framing;
   const { length: L, height: H } = wall;
   const orient = ORIENTATION[view];
   const flipped = orient.flipZ;
+  const showSheathing = sheathingOn && !compact;
+  const pad = compact ? COMPACT_PAD : PAD;
 
   // Standing, the drawing extends above the wall when sheathing runs past the top plate.
   // On the deck that part isn't on the wall yet, so it isn't shown.
   const zTop = showSheathing && !flipped ? Math.max(H, framing.sheathing.top) : H;
-  const padL = orient.mirrorX ? PAD.end : PAD.start;
-  const padR = orient.mirrorX ? PAD.start : PAD.end;
-  const padT = flipped ? PAD.bottom : PAD.top;
-  const padB = flipped ? PAD.top : PAD.bottom;
-  const width = Math.max(measured, MIN_WIDTH);
+  const padL = orient.mirrorX ? pad.end : pad.start;
+  const padR = orient.mirrorX ? pad.start : pad.end;
+  const padT = flipped ? pad.bottom : pad.top;
+  const padB = flipped ? pad.top : pad.bottom;
+  const width = compact ? measured || 320 : Math.max(measured, MIN_WIDTH);
   const ppi = fit
     ? Math.max(0.5, Math.min((width - padL - padR) / fit.length, (fit.maxHeight - padT - padB) / fit.height))
     : Math.max(0.5, Math.min((width - padL - padR) / L, (MAX_HEIGHT - padT - padB) / zTop));
@@ -213,54 +218,59 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing,
         ))}
 
         {/* header callouts */}
-        {members
-          .filter((m) => m.role === 'header')
-          .map((m) => {
-            const label = `${m.size} × ${fmt(m.length)}`;
-            if (m.w * ppi < textWidth(label) + 8 || m.h * ppi < 12) return null;
-            return (
-              <text key={`hl${m.id}`} className="hdr-t" x={X(m.x + m.w / 2)} y={Y(m.z + m.h / 2) + 3.8} textAnchor="middle">
-                {label}
-              </text>
-            );
-          })}
+        {!compact &&
+          members
+            .filter((m) => m.role === 'header')
+            .map((m) => {
+              const label = `${m.size} × ${fmt(m.length)}`;
+              if (m.w * ppi < textWidth(label) + 8 || m.h * ppi < 12) return null;
+              return (
+                <text key={`hl${m.id}`} className="hdr-t" x={X(m.x + m.w / 2)} y={Y(m.z + m.h / 2) + 3.8} textAnchor="middle">
+                  {label}
+                </text>
+              );
+            })}
 
         {openings.map((o) => (
-          <OpeningOverlay key={o.spec.id} o={o} framing={framing} fmt={fmt} v={v} />
+          <OpeningOverlay key={o.spec.id} o={o} framing={framing} fmt={fmt} v={v} compact={compact} />
         ))}
 
         {showSheathing && <SheathingOverlay framing={framing} fmt={fmt} v={v} aboveWall={!flipped} />}
 
-        {/* overall length */}
-        <HDim x1={X(0)} x2={X(L)} y={Y(zTop) - 30 * bt} label={fmt(L)} ext={Y(H)} />
-        {/* overall height and stud length, off the wall's left end */}
-        <VDim x={X(0) - 70 * sx} y1={Y(H)} y2={Y(0)} label={`WALL ${fmt(H)}`} ext={X(0)} side={v.side('left')} rotate />
-        <VDim x={X(0) - 36 * sx} y1={Y(plateBottom)} y2={Y(T)} label={`STUD ${fmt(studLength)}`} ext={X(0)} side={v.side('left')} rotate />
+        {!compact && (
+          <>
+            {/* overall length */}
+            <HDim x1={X(0)} x2={X(L)} y={Y(zTop) - 30 * bt} label={fmt(L)} ext={Y(H)} />
+            {/* overall height and stud length, off the wall's left end */}
+            <VDim x={X(0) - 70 * sx} y1={Y(H)} y2={Y(0)} label={`WALL ${fmt(H)}`} ext={X(0)} side={v.side('left')} rotate />
+            <VDim x={X(0) - 36 * sx} y1={Y(plateBottom)} y2={Y(T)} label={`STUD ${fmt(studLength)}`} ext={X(0)} side={v.side('left')} rotate />
 
-        {/* layout marks */}
-        <text className="cap" x={v.left - 10} y={v.textAt(layoutY, 7, 15, bt)} textAnchor="end">
-          {`LAYOUT ${v.arrow}`}
-        </text>
-        {layout.map(({ center, distance }, i) => (
-          <g key={`lay${i}`}>
-            <line className="lay-k" x1={X(center)} y1={layoutY} x2={X(center)} y2={layoutY + 6 * bt} />
-            {(i + 1) % layoutStep === 0 && (
-              <text className="lay-t" x={X(center)} y={v.textAt(layoutY, 10, 18, bt)} textAnchor="middle">
-                {fmt(distance)}
-              </text>
-            )}
-          </g>
-        ))}
+            {/* layout marks */}
+            <text className="cap" x={v.left - 10} y={v.textAt(layoutY, 7, 15, bt)} textAnchor="end">
+              {`LAYOUT ${v.arrow}`}
+            </text>
+            {layout.map(({ center, distance }, i) => (
+              <g key={`lay${i}`}>
+                <line className="lay-k" x1={X(center)} y1={layoutY} x2={X(center)} y2={layoutY + 6 * bt} />
+                {(i + 1) % layoutStep === 0 && (
+                  <text className="lay-t" x={X(center)} y={v.textAt(layoutY, 10, 18, bt)} textAnchor="middle">
+                    {fmt(distance)}
+                  </text>
+                )}
+              </g>
+            ))}
 
-        {/* chain dimensions to rough openings */}
-        <text className="cap" x={v.left - 10} y={chainY + 4} textAnchor="end">
-          TO R.O.
-        </text>
-        {pts.slice(1).map((p, i) => {
-          const prev = pts[i]!;
-          if (p - prev <= 1e-6) return null;
-          return <HDim key={`ch${i}`} x1={X(prev)} x2={X(p)} y={chainY} label={fmt(p - prev)} ext={Y(0) + 40 * bt} />;
-        })}
+            {/* chain dimensions to rough openings */}
+            <text className="cap" x={v.left - 10} y={chainY + 4} textAnchor="end">
+              TO R.O.
+            </text>
+            {pts.slice(1).map((p, i) => {
+              const prev = pts[i]!;
+              if (p - prev <= 1e-6) return null;
+              return <HDim key={`ch${i}`} x1={X(prev)} x2={X(p)} y={chainY} label={fmt(p - prev)} ext={Y(0) + 40 * bt} />;
+            })}
+          </>
+        )}
       </svg>
     </div>
   );
@@ -271,9 +281,10 @@ interface OverlayProps {
   framing: Framing;
   fmt: Formatter;
   v: ViewMap;
+  compact: boolean;
 }
 
-function OpeningOverlay({ o, framing, fmt, v }: OverlayProps) {
+function OpeningOverlay({ o, framing, fmt, v, compact }: OverlayProps) {
   const { spec } = o;
   const { X, Y, sx, bt } = v;
   // Screen x of the rough opening's left and right edges as seen standing.
@@ -285,7 +296,7 @@ function OpeningOverlay({ o, framing, fmt, v }: OverlayProps) {
   const cx = (xl + xr) / 2;
   const cy = (yTop + yBot) / 2;
   const roWidthPx = Math.abs(xr - xl);
-  const title = `${spec.label} · ${spec.type.toUpperCase()}`;
+  const title = compact ? spec.label : `${spec.label} · ${spec.type.toUpperCase()}`;
   const ro = `RO ${toFraction(spec.width)} × ${toFraction(spec.height)}`;
   const full = spec.unit ? `${toFraction(spec.unit.width)} × ${toFraction(spec.unit.height)} unit · ${ro}` : ro;
   const size = roWidthPx > textWidth(full) + 50 ? full : ro;
@@ -307,38 +318,42 @@ function OpeningOverlay({ o, framing, fmt, v }: OverlayProps) {
       <text className={`ro-t halo ${spec.type}${err}`} x={cx} y={cy - 2} textAnchor="middle">
         {title}
       </text>
-      {roWidthPx > textWidth(size) + 50 && (
+      {!compact && roWidthPx > textWidth(size) + 50 && (
         <text className={`ro-s halo ${spec.type}${err}`} x={cx} y={cy + 13} textAnchor="middle">
           {size}
         </text>
       )}
 
-      {/* inside the opening, just under the header */}
-      <HDim x1={xl} x2={xr} y={yTop + 16 * bt} label={fmt(spec.width)} />
-      <VDim x={xr - 11 * sx} y1={yTop} y2={yBot} label={`RO ${fmt(spec.height)}`} side={v.side('left')} />
-      <VDim x={xl + 11 * sx} y1={Y(o.headerBottom)} y2={Y(T)} label={`JACK ${fmt(o.headerBottom - T)}`} side={v.side('right')} />
-      {spec.type === 'window' && (
-        <VDim x={xr - 11 * sx} y1={yBot} y2={Y(0)} label={`SILL ${fmt(spec.sill)}`} side={v.side('left')} />
-      )}
+      {!compact && (
+        <>
+          {/* inside the opening, just under the header */}
+          <HDim x1={xl} x2={xr} y={yTop + 16 * bt} label={fmt(spec.width)} />
+          <VDim x={xr - 11 * sx} y1={yTop} y2={yBot} label={`RO ${fmt(spec.height)}`} side={v.side('left')} />
+          <VDim x={xl + 11 * sx} y1={Y(o.headerBottom)} y2={Y(T)} label={`JACK ${fmt(o.headerBottom - T)}`} side={v.side('right')} />
+          {spec.type === 'window' && (
+            <VDim x={xr - 11 * sx} y1={yBot} y2={Y(0)} label={`SILL ${fmt(spec.sill)}`} side={v.side('left')} />
+          )}
 
-      {(tops.length > 0 || hasFill) && (
-        <VDim
-          x={X(tops.length ? widestBay(o.crippleSpan[0], o.crippleSpan[1], tops.map((m) => m.x)) : o.crippleSpan[0] + (o.crippleSpan[1] - o.crippleSpan[0]) * 0.72)}
-          y1={Y(o.crippleZone[1])}
-          y2={Y(o.crippleZone[0])}
-          label={`${tops.length ? 'CRIPPLE' : 'FILL'} ${fmt(o.gapAbove)}`}
-          side={v.side('right')}
-          rotate={false}
-        />
-      )}
-      {bottoms.length > 0 && o.crippleBelow != null && (
-        <VDim
-          x={X(widestBay(spec.x, spec.x + spec.width, bottoms.map((m) => m.x)))}
-          y1={Y(sillBottom)}
-          y2={Y(T)}
-          label={`CRIPPLE ${fmt(o.crippleBelow)}`}
-          side={v.side('right')}
-        />
+          {(tops.length > 0 || hasFill) && (
+            <VDim
+              x={X(tops.length ? widestBay(o.crippleSpan[0], o.crippleSpan[1], tops.map((m) => m.x)) : o.crippleSpan[0] + (o.crippleSpan[1] - o.crippleSpan[0]) * 0.72)}
+              y1={Y(o.crippleZone[1])}
+              y2={Y(o.crippleZone[0])}
+              label={`${tops.length ? 'CRIPPLE' : 'FILL'} ${fmt(o.gapAbove)}`}
+              side={v.side('right')}
+              rotate={false}
+            />
+          )}
+          {bottoms.length > 0 && o.crippleBelow != null && (
+            <VDim
+              x={X(widestBay(spec.x, spec.x + spec.width, bottoms.map((m) => m.x)))}
+              y1={Y(sillBottom)}
+              y2={Y(T)}
+              label={`CRIPPLE ${fmt(o.crippleBelow)}`}
+              side={v.side('right')}
+            />
+          )}
+        </>
       )}
     </g>
   );

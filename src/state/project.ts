@@ -30,11 +30,9 @@ export interface DisplayPrefs {
   units: Units;
   view: 'standing' | 'deck';
   showSheathing: 'on' | 'off';
-  /** Show only the selected wall, or every wall in the project. */
-  scope: 'one' | 'all';
 }
 
-export const DEFAULT_PREFS: DisplayPrefs = { units: 'in', view: 'standing', showSheathing: 'on', scope: 'all' };
+export const DEFAULT_PREFS: DisplayPrefs = { units: 'in', view: 'standing', showSheathing: 'on' };
 
 /** The first floor of the Buckley-Watanabe residence, from its architectural and structural plans. */
 export const EXAMPLE_PROJECT: Project = parseProjectText(firstFloorText).project ?? {
