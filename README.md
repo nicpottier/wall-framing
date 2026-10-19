@@ -45,7 +45,7 @@ The data flow is one way: **form or `.wall.md` text → `toWallSpec` → `comput
 
 A project holds several walls. The **overview** shows every wall as a card (size, openings, anything to fix, and a small drawing at a shared scale), with tabs for the project's combined **Cut list** and its **Text**. Clicking a card opens that wall's **editor** (form, dimensioned drawing, cut list and checks) at `#/wall/N`; **← All walls**, the browser's Back button, and the ‹ › arrows move between them.
 
-The example (**Load example**) is the first floor of the Buckley-Watanabe residence, written as [`src/state/examples/first-floor.wall.md`](src/state/examples/first-floor.wall.md): the main house's exterior walls and the living-room bump-out (the garage walls are left out for now) from the architectural plans (A101, A007, A200, A302), with beams, posts and the stair's plate steps from the structural plans (S2.2). Its notes record the assumptions made reading the plans.
+The example (**Load example**) is the first floor of the Buckley-Watanabe residence, written as [`src/state/examples/first-floor.wall.md`](src/state/examples/first-floor.wall.md): the main house's exterior walls and the living-room bump-out, split where a framer would build them separately (the garage walls and the balloon-framed west wall along the stairs are left out) from the architectural plans (A101, A007, A200, A302), with beams and posts from the structural plans (S2.2). Its notes record the assumptions made reading the plans.
 
 ## Wall spec text (`.wall.md`)
 
@@ -122,7 +122,7 @@ Left and right are always as seen **from inside** the building. Enter opening po
 ### Posts and balloon framing
 
 - **Posts** sit where a beam bears on the wall (S2.2 shows a post below each end of B2; plan note 5 calls for (3) studs minimum at beam ends). A post replaces the layout studs it covers, or the end stud at a wall end, backs any sheathing seam that lands on it, and is an error over an opening's framing or a plate step. Built-up posts list each stud.
-- **Tall stretches** frame part of a wall to its own height, like balloon framing past the second floor at the stair (S2.2: "step plate per 3/S4.1"). The stretch gets its own double top plate and stud length; openings inside it frame to it. At each step (3/S4.1): (2) studs each side, 2x4 flat blocking on the tall side in line with the lower plates for at least 4'-0", and a CS16 strap over the sheathing ((14) 8d to the plates, (5) 8d to each block). Sheathing rows and seam blocking follow each stretch's height.
+- **Tall stretches** frame part of a wall to its own height where its top plate steps (3/S4.1). A stretch whose bottom plate also changes, or that runs two stories, is better built as its own wall. The stretch gets its own double top plate and stud length; openings inside it frame to it. At each step (3/S4.1): (2) studs each side, 2x4 flat blocking on the tall side in line with the lower plates for at least 4'-0", and a CS16 strap over the sheathing ((14) 8d to the plates, (5) 8d to each block). Sheathing rows and seam blocking follow each stretch's height.
 
 ## Ideas for next steps
 

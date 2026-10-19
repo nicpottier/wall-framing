@@ -1,8 +1,8 @@
 # Buckley-Watanabe residence · first floor
 
-418 Cedar St, Leavenworth. First-floor exterior walls of the main house and its bump-out (WT34/WT35, 2x6) from the architectural set: plan A101, window and door schedules A007, levels A200 and section A302. Beams, posts and the stair's plate steps from S2.2 (Harezlak Engineering, Rev. 1); other headers are 4x8 per plan note 3.
+418 Cedar St, Leavenworth. First-floor exterior walls of the main house and its bump-out (WT34/WT35, 2x6) from the architectural set: plan A101, window and door schedules A007, levels A200 and section A302. Beams and posts from S2.2 (Harezlak Engineering, Rev. 1); other headers are 4x8 per plan note 3.
 
-Left and right are seen from inside. Lengths are framing lengths: the south wall runs through the corners and the east and west walls butt into it. The house's east and west walls start 5 1/2" north of grid C, past the garage partition on C. The garage walls, including that partition, are left out for now. Verify in the field.
+Left and right are seen from inside. Walls are split where a framer would build them separately. Lengths are framing lengths: the south wall runs through the corners and the east and west walls butt into it. The house's east and west walls start 5 1/2" north of grid C, past the garage partition on C. The garage walls, including that partition, are left out for now, and so is the west wall along the stairs: the floor is open above it (S2.2) and below it (S2.1), so it is balloon framed two stories and built on its own, window 4 with it. Verify in the field.
 
 ## Defaults
 - studs: 2x6 @ 16
@@ -60,17 +60,18 @@ Window 1 (3'-0" x 1'-0" fixed, head 8'-0") sits over door A; one rough opening f
 ### Posts
 - P1: 6x6, 8-0 from right
 
-## West · house
-- length: 34-0
+## West · south
+- length: 7-0 1/2
 - corners: left inside, right none
 
-The stair to the second floor (17 risers, A101) runs north along this wall, and the second floor is open over it between the B1 headers, about 9-5 to 21-0 from the left end (S2.2). With no floor framing there, the wall is framed up to the second floor's bottom plate at 10'-1 7/8" (A200), with step plates per 3/S4.1 (S2.2). Windows 4 and 7 frame right up to the opening, so the steps sit just past their king studs. Verify against the framing plan.
+From the south wall to the basement stair opening (S2.1), where the floor drops out from under the bottom plate.
+
+## West · north
+- length: 13-6 1/2
+
+From window 7's king stud to the garage partition. The second-floor stair opening (S2.2) ends about here and window 7 frames right up to it, so check the break against the framing plan.
 
 ### Openings
-- 4: window 2-0 x 4-0, 8-6 1/2 from left
 - 7: window 2-6 x 4-6, 11-9 1/2 from right
 - 6: window 2-0 x 2-0, 8-4 from right
 - 5: window 3-6 x 2-0, 4-3 1/2 from right
-
-### Balloon framing
-- Stair: 10-1 7/8 tall, 10-2 to 20-4 from left

@@ -170,10 +170,10 @@ describe('first-floor example', () => {
       'East · bay, south return',
       'East · living',
       'South',
-      'West · house',
+      'West · south',
+      'West · north',
     ]);
-    const west = EXAMPLE_PROJECT.walls.find((w) => w.name === 'West · house')!;
-    expect(west.tall).toMatchObject([{ label: 'Stair', height: '10-1 7/8', start: '10-2', end: '20-4', from: 'left' }]);
+    expect(EXAMPLE_PROJECT.walls.every((w) => w.tall.length === 0)).toBe(true);
     expect(EXAMPLE_PROJECT.walls.filter((w) => w.posts.length).map((w) => w.name)).toEqual(['South']);
     expect(EXAMPLE_PROJECT.defaults).toMatchObject({ height: '9-1 1/4', windowHeadHeight: '7-8' });
   });
