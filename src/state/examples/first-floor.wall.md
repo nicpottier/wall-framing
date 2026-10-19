@@ -1,8 +1,8 @@
 # Buckley-Watanabe residence · first floor
 
-418 Cedar St, Leavenworth. First-floor walls of the main house (exterior WT34/WT35 and the garage partition WT82, 2x6) from the architectural set: plan A101, window and door schedules A007, levels A200 and section A302. Beams, posts and the stair's plate steps from S2.2 (Harezlak Engineering, Rev. 1); other headers are 4x8 per plan note 3.
+418 Cedar St, Leavenworth. First-floor exterior walls of the main house and its bump-out (WT34/WT35, 2x6) from the architectural set: plan A101, window and door schedules A007, levels A200 and section A302. Beams, posts and the stair's plate steps from S2.2 (Harezlak Engineering, Rev. 1); other headers are 4x8 per plan note 3.
 
-Left and right are seen from inside. Lengths are framing lengths: the south wall runs through the corners and the east and west walls butt into it. The house's east and west walls start 5 1/2" north of grid C, past the garage partition on C, which butts between them. The garage walls are left out for now. Verify in the field.
+Left and right are seen from inside. Lengths are framing lengths: the south wall runs through the corners and the east and west walls butt into it. The house's east and west walls start 5 1/2" north of grid C, past the garage partition on C. The garage walls, including that partition, are left out for now. Verify in the field.
 
 ## Defaults
 - studs: 2x6 @ 16
@@ -17,19 +17,6 @@ Left and right are seen from inside. Lengths are framing lengths: the south wall
 - door ro: +2 x +2 1/2
 - sheathing: vertical, 2" thick, start 12, double seam studs, block seams
 - corners: left none, right none
-
-## North · garage partition
-- length: 23-1
-- exterior: no
-- sheathing: vertical, 1/2" thick, start 0, double seam studs, block seams
-
-Fire-rated partition WT82 (UL305) between the garage and the house, sheathed as shear wall SW-6 (8/S4.0); the sheathing thickness is assumed. Door C is the fire-rated 2'-10" x 6'-8" from the garage (A007), under the 4x12 called out on S2.2. Beam B2 bears on this wall at grid 2, 8'-0" from the outside of the west wall, over a post below (S2.2); P1 carries it down to the P1 post in the basement (S2.1). Plan note 5 calls for (3) studs at least.
-
-### Openings
-- C: door 2-10 x 6-8, 2-6 from left, header 4x12
-
-### Posts
-- P1: 6x6, 7-6 1/2 from left
 
 ## East · kitchen
 - length: 24-5 1/2

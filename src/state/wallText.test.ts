@@ -164,7 +164,6 @@ describe('posts and balloon framing', () => {
 describe('first-floor example', () => {
   it('reads the plans file into the main house walls', () => {
     expect(EXAMPLE_PROJECT.walls.map((w) => w.name)).toEqual([
-      'North · garage partition',
       'East · kitchen',
       'East · bay, north return',
       'East · bay',
@@ -175,7 +174,7 @@ describe('first-floor example', () => {
     ]);
     const west = EXAMPLE_PROJECT.walls.find((w) => w.name === 'West · house')!;
     expect(west.tall).toMatchObject([{ label: 'Stair', height: '10-1 7/8', start: '10-2', end: '20-4', from: 'left' }]);
-    expect(EXAMPLE_PROJECT.walls.filter((w) => w.posts.length).map((w) => w.name)).toEqual(['North · garage partition', 'South']);
+    expect(EXAMPLE_PROJECT.walls.filter((w) => w.posts.length).map((w) => w.name)).toEqual(['South']);
     expect(EXAMPLE_PROJECT.defaults).toMatchObject({ height: '9-1 1/4', windowHeadHeight: '7-8' });
   });
 });

@@ -45,7 +45,7 @@ The data flow is one way: **form or `.wall.md` text → `toWallSpec` → `comput
 
 A project holds several walls. The **overview** shows every wall as a card (size, openings, anything to fix, and a small drawing at a shared scale), with tabs for the project's combined **Cut list** and its **Text**. Clicking a card opens that wall's **editor** (form, dimensioned drawing, cut list and checks) at `#/wall/N`; **← All walls**, the browser's Back button, and the ‹ › arrows move between them.
 
-The example (**Load example**) is the first floor of the Buckley-Watanabe residence, written as [`src/state/examples/first-floor.wall.md`](src/state/examples/first-floor.wall.md): the main house's walls (the garage is left out for now) from the architectural plans (A101, A007, A200, A302), with beams, posts and the stair's plate steps from the structural plans (S2.2). Its notes record the assumptions made reading the plans.
+The example (**Load example**) is the first floor of the Buckley-Watanabe residence, written as [`src/state/examples/first-floor.wall.md`](src/state/examples/first-floor.wall.md): the main house's exterior walls and the living-room bump-out (the garage walls are left out for now) from the architectural plans (A101, A007, A200, A302), with beams, posts and the stair's plate steps from the structural plans (S2.2). Its notes record the assumptions made reading the plans.
 
 ## Wall spec text (`.wall.md`)
 
