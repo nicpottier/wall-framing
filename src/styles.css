@@ -1214,6 +1214,13 @@ a.brand {
 .m-partitionStud {
   fill: var(--w-backer);
 }
+.beam-ov {
+  fill: color-mix(in srgb, var(--w-post) 22%, transparent);
+  stroke: var(--w-post);
+  stroke-width: 1.2;
+  stroke-dasharray: 6 3;
+  pointer-events: none;
+}
 .tee {
   fill: color-mix(in srgb, var(--sec-structure) 7%, transparent);
   stroke: var(--sec-structure);

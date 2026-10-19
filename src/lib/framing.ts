@@ -60,6 +60,22 @@ export interface TallSpec {
   height: number;
 }
 
+/**
+ * A dropped beam bearing on the wall (11/S4.2): its top is flush with the top of the top plates, so
+ * the plates stop where it passes. Crossing the wall, it sits on a post; running along the wall, the
+ * wall is framed to its underside.
+ */
+export interface BeamSpec {
+  id: string;
+  label: string;
+  /** Wall's left end to each side of the beam (or each end of the stretch it runs along). */
+  x0: number;
+  x1: number;
+  depth: number;
+  /** Size, for labels: "5½ × 11⅞ GL". */
+  size: string;
+}
+
 /** Another wall butting into this one, with its framing depth (3 1/2" or 5 1/2"). */
 export interface IntersectionSpec {
   id: string;
@@ -101,6 +117,7 @@ export interface WallSpec {
    * none). A stud laid flat at the inside face just past it backs the drywall in the corner.
    */
   california?: { left: number; right: number };
+  beams?: BeamSpec[];
 }
 
 // ---------- Outputs ----------
@@ -239,6 +256,12 @@ export interface WallSection {
   studLength: number;
   /** Set for a stretch framed to its own height. */
   tall?: TallSpec;
+  /** Set where a beam sits on top in place of the top plates. */
+  beam?: BeamSpec;
+  /** Top plates over this stretch: the wall's, one under a beam running along it, none in a beam pocket. */
+  plates: number;
+  /** Posts run to the underside of a beam, or to the plates. */
+  postLength: number;
   /** Horizontal sheathing seams and the top of the sheathing hung on the deck over this stretch. */
   seams: number[];
   sheathTop: number;
@@ -339,6 +362,8 @@ export const LONG_HEADER = 72;
 export const LONG_HEAD_PLATE = 96;
 /** 3/S4.1: flat blocking runs at least 4'-0" past a plate step on the tall side. */
 export const STEP_BLOCKING = 48;
+/** A beam stretch this narrow is a pocket over a post, with no plate under the beam. */
+const POCKET = 6;
 /** 3/S4.1: (2) studs each side of a plate step, minimum. */
 const STEP_STUDS = 2;
 
@@ -350,8 +375,6 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
   if (!(wall.sheathing.thickness >= 0) || wall.sheathing.thickness > 6) return { ok: false, message: 'Enter a sheathing thickness between 0 and 6".' };
   if (wall.sheathing.enabled !== false && (!(wall.sheathing.startHeight >= 0) || wall.sheathing.startHeight > H)) return { ok: false, message: 'Enter a sheathing start height within the wall height.' };
 
-  const plateBottom = H - topPlates * T;
-  const studLength = plateBottom - T;
 
   const stock: LumberSize = wall.studs ?? '2x6';
   const members: Member[] = [];
@@ -362,6 +385,9 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
   /** Section a vertical member from x to x + w stands in. */
   const sectionOf = (x: number, w = T) => sectionAt(x + w / 2);
   const maxHeight = Math.max(...sections.map((p) => p.height));
+  // The wall's own plate and stud length are those of its longest stretch.
+  const main = sections.reduce((a, b) => (b.x1 - b.x0 > a.x1 - a.x0 ? b : a));
+  const { plateBottom, studLength } = main;
   let seq = 0;
   const add = (m: Omit<Member, 'id' | 'group' | 'size'> & { size?: string }) => {
     const size = m.size ?? stock;
@@ -372,9 +398,10 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
 
   add({ role: 'plate', x: 0, z: 0, w: L, h: T, length: L });
   for (const p of sections) {
-    for (let i = 0; i < topPlates; i++) {
+    if (p.beam) continue;
+    for (let i = 0; i < p.plates; i++) {
       const w = p.x1 - p.x0;
-      add({ role: 'topPlate', x: p.x0, z: p.height - (i + 1) * T, w, h: T, length: w, lowerPlate: topPlates === 2 && i === 1 });
+      add({ role: 'topPlate', x: p.x0, z: p.height - (i + 1) * T, w, h: T, length: w, lowerPlate: p.plates === 2 && i === 1 });
     }
   }
 
@@ -456,7 +483,7 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
       headPlies = wall.exterior && spec.width > LONG_HEAD_PLATE ? 2 : 1;
       const headPlateTop = roTop + headPlies * T;
       headerTop = plateBottom;
-      if (headerTop - header.depth < headPlateTop - EPS && topPlates === 2 && headerTop + T - header.depth >= headPlateTop - EPS) {
+      if (headerTop - header.depth < headPlateTop - EPS && sec.plates === 2 && headerTop + T - header.depth >= headPlateTop - EPS) {
         headerTop += T;
         topPlateCut = [headerX, headerX + headerLength];
         issue('note', `${tag}: the ${name} header rises into the double top plate. Cut the lower plate and strap across it with MSTA24 (10/S4.1).`, spec.id);
@@ -558,6 +585,7 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
   }
 
   const posts = placePosts(wall, sectionOf, openings, stepZones, add, issue, fmt);
+  placeBeamPlates(sections, posts, add, issue, fmt);
 
   // End studs (unless a post sits at the end), then common studs on layout wherever nothing else sits.
   const studAt = (x: number) => {
@@ -677,7 +705,7 @@ function buildSections(wall: WallSpec, issue: AddIssue, fmt: Formatter): WallSec
     accepted.push(t);
   }
 
-  const spans: { x0: number; x1: number; height: number; tall?: TallSpec }[] = [];
+  const spans: { x0: number; x1: number; height: number; tall?: TallSpec; beam?: BeamSpec }[] = [];
   let x = 0;
   for (const t of accepted) {
     if (t.x0 > x + EPS) spans.push({ x0: x, x1: t.x0, height: H });
@@ -686,11 +714,66 @@ function buildSections(wall: WallSpec, issue: AddIssue, fmt: Formatter): WallSec
   }
   if (x < L - EPS) spans.push({ x0: x, x1: L, height: H });
 
+  // Beams carve their stretch out of a span at the wall's own height.
+  for (const b of [...(wall.beams ?? [])].sort((p, q) => p.x0 - q.x0)) {
+    const fail = (message: string) => issue('error', `${b.label || 'Beam'}: ${message}`, b.id);
+    if (!(b.x1 > b.x0) || b.x0 < -EPS || b.x1 > L + EPS) {
+      fail('runs past the end of the wall.');
+      continue;
+    }
+    if (!(b.depth < H - T - 24)) {
+      fail('is too deep for this wall.');
+      continue;
+    }
+    const i = spans.findIndex((sp) => !sp.tall && !sp.beam && b.x0 >= sp.x0 - EPS && b.x1 <= sp.x1 + EPS);
+    if (i < 0) {
+      fail('overlaps another beam or a tall stretch.');
+      continue;
+    }
+    const sp = spans[i]!;
+    const pieces = [
+      ...(b.x0 > sp.x0 + EPS ? [{ x0: sp.x0, x1: b.x0, height: H }] : []),
+      { x0: Math.max(sp.x0, b.x0), x1: Math.min(sp.x1, b.x1), height: H, beam: b },
+      ...(b.x1 < sp.x1 - EPS ? [{ x0: b.x1, x1: sp.x1, height: H }] : []),
+    ];
+    spans.splice(i, 1, ...pieces);
+  }
+
   return spans.map((sp) => {
-    const plateBottom = sp.height - wall.topPlates * T;
+    // A beam crossing the wall sits on a post in a pocket; one running along it gets a single plate under it.
+    const plates = sp.beam ? (sp.x1 - sp.x0 <= POCKET + EPS ? 0 : 1) : wall.topPlates;
+    const top = sp.beam ? sp.height - sp.beam.depth : sp.height;
+    const plateBottom = top - plates * T;
     const rows = panelRows(wall.sheathing, sp.height);
-    return { ...sp, plateBottom, studLength: plateBottom - T, seams: rows.horizontalSeams, sheathTop: rows.top };
+    return { ...sp, plates, plateBottom, studLength: plateBottom - T, postLength: (sp.beam ? top : plateBottom) - T, seams: rows.horizontalSeams, sheathTop: rows.top };
   });
+}
+
+/** Single plates under beams running along the wall, cut around the posts that carry them; notes for each beam. */
+function placeBeamPlates(sections: WallSection[], posts: PostFrame[], add: AddMember, issue: AddIssue, fmt: Formatter) {
+  const full = sections.length === 1;
+  for (const sec of sections) {
+    const b = sec.beam;
+    if (!b) continue;
+    const z = sec.height - b.depth - T;
+    const under = posts.filter((p) => !p.hasError && p.x1 > sec.x0 + EPS && p.x0 < sec.x1 - EPS).sort((p, q) => p.x0 - q.x0);
+    if (sec.plates) {
+      let x = sec.x0;
+      for (const p of [...under.map((p) => [p.x0, p.x1] as const), [sec.x1, sec.x1] as const]) {
+        if (p[0] - x > EPS) add({ role: 'topPlate', x, z, w: p[0] - x, h: T, length: p[0] - x });
+        x = Math.max(x, p[1]);
+      }
+    } else if (!under.length) {
+      issue('warning', `${b.label}: nothing carries it. Add a post under the beam.`, b.id);
+    }
+    issue(
+      'note',
+      full
+        ? `${b.label} (${b.size}) caps this wall, its top flush with the other walls' plates (11/S4.2): frame to its underside, ${fmt(sec.height - b.depth)} off the floor, with a single top plate${under.length ? ' and posts running up to the beam' : ''}.`
+        : `${b.label} (${b.size}) breaks the top plates ${fmt(sec.x0)} to ${fmt(sec.x1)} from the left end, its underside ${fmt(sec.height - b.depth)} off the floor (11/S4.2). Tie the plates across it with straps, as with MSTA24 where a header interrupts them (10/S4.1); confirm with the engineer.`,
+      b.id,
+    );
+  }
 }
 
 /**
@@ -747,7 +830,7 @@ function placePosts(
       continue;
     }
     frame.hasError = false;
-    const len = sec.studLength;
+    const len = sec.postLength;
     if (type.plies === 1) {
       add({ role: 'post', x: x0, z: T, w: type.width, h: len, size: type.label, length: len, postId: spec.id });
     } else {

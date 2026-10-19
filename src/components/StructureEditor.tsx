@@ -1,10 +1,12 @@
 import { useId, type Dispatch, type ReactNode } from 'react';
-import { DEPTH, POST_TYPES, T, postType } from '../lib/lumber';
+import { DEPTH, HEADER_TYPES, POST_TYPES, T, headerName, postType } from '../lib/lumber';
 import { parseLength, type Formatter } from '../lib/units';
 import {
+  resolveBeam,
   resolveIntersection,
   resolvePost,
   resolveTall,
+  type BeamInput,
   type IntersectionInput,
   type PostInput,
   type TallInput,
@@ -23,12 +25,13 @@ interface Props {
 
 /** Posts under beam bearing, walls butting in, California corners, and stretches framed taller than the rest. */
 export function StructureEditor({ wall, errorIds, fmt, dispatch }: Props) {
-  const empty = !wall.posts.length && !wall.tall.length && !wall.intersections.length;
+  const empty = !wall.posts.length && !wall.tall.length && !wall.intersections.length && !wall.beams.length;
   const count = (n: number, one: string, many: string) => (n ? `${n} ${n === 1 ? one : many}` : '');
   const corners = [wall.californiaLeft, wall.californiaRight].filter((c) => c !== 'none').length;
   const parts = [
     count(wall.intersections.length, 'intersection', 'intersections'),
     count(wall.posts.length, 'post', 'posts'),
+    count(wall.beams.length, 'beam', 'beams'),
     count(corners, 'California corner', 'California corners'),
     count(wall.tall.length, 'tall stretch', 'tall stretches'),
   ].filter(Boolean);
@@ -62,6 +65,10 @@ export function StructureEditor({ wall, errorIds, fmt, dispatch }: Props) {
             <PlusIcon />
             <PostGlyph /> Post
           </button>
+          <button className="btn add structure" type="button" onClick={() => dispatch({ type: 'addBeam' })}>
+            <PlusIcon />
+            <BeamGlyph /> Beam
+          </button>
           <button className="btn add structure" type="button" onClick={() => dispatch({ type: 'addTall' })}>
             <PlusIcon />
             <TallGlyph /> Tall stretch
@@ -69,8 +76,8 @@ export function StructureEditor({ wall, errorIds, fmt, dispatch }: Props) {
         </div>
         {empty && (
           <p className="empty">
-            Add an intersection where another wall butts in partway along (it gets backer studs and ladder blocking), a post where a beam bears
-            on this wall, or a tall stretch where the top plate steps up per 3/S4.1.
+            Add an intersection where another wall butts in partway along (it gets backer studs and ladder blocking), a post and beam where a
+            dropped beam bears on this wall and breaks its top plates, or a tall stretch where the top plate steps up per 3/S4.1.
           </p>
         )}
         {wall.intersections.map((t) => (
@@ -79,11 +86,79 @@ export function StructureEditor({ wall, errorIds, fmt, dispatch }: Props) {
         {wall.posts.map((p) => (
           <PostCard key={p.id} post={p} wall={wall} hasError={errorIds.has(p.id)} fmt={fmt} dispatch={dispatch} />
         ))}
+        {wall.beams.map((b) => (
+          <BeamCard key={b.id} beam={b} wall={wall} hasError={errorIds.has(b.id)} fmt={fmt} dispatch={dispatch} />
+        ))}
         {wall.tall.map((t) => (
           <TallCard key={t.id} tall={t} wall={wall} hasError={errorIds.has(t.id)} fmt={fmt} dispatch={dispatch} />
         ))}
       </div>
     </Panel>
+  );
+}
+
+function BeamGlyph() {
+  return (
+    <svg className="glyph" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <rect x="1.5" y="2.5" width="13" height="4" fill="currentColor" fillOpacity="0.3" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M6 6.5v8M10 6.5v8M1.5 14.5h13" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  );
+}
+
+interface BeamCardProps {
+  beam: BeamInput;
+  wall: WallInput;
+  hasError: boolean;
+  fmt: Formatter;
+  dispatch: Dispatch<WallAction>;
+}
+
+function BeamCard({ beam: b, wall, hasError, fmt, dispatch }: BeamCardProps) {
+  const patch = (patch: Partial<BeamInput>) => dispatch({ type: 'updateBeam', id: b.id, patch });
+  const r = resolveBeam(b, wall);
+  return (
+    <article className={`op op-structure${hasError ? ' has-err' : ''}`} aria-label={`Beam ${b.label}`}>
+      <CardHead kind="Beam" label={b.label} glyph={<BeamGlyph />} onLabel={(label) => patch({ label })} onRemove={() => dispatch({ type: 'removeBeam', id: b.id })} />
+      <div className="fields">
+        <Field label="Size" full>
+          {(id) => (
+            <select id={id} value={b.type} onChange={(e) => patch({ type: e.target.value as BeamInput['type'] })}>
+              {HEADER_TYPES.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {headerName(h)}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+        <Segmented
+          full
+          label="Beam"
+          value={b.span}
+          options={[['cross', 'Crosses the wall'], ['along', 'Along part'], ['full', 'Full length']]}
+          onChange={(span) => patch({ span })}
+        />
+        {b.span !== 'full' && (
+          <Segmented full label="Measured from" value={b.from} options={[['left', 'Left end'], ['right', 'Right end']]} onChange={(from) => patch({ from })} />
+        )}
+        {b.span === 'cross' && <Field label="To its centerline">{(id) => <LengthInput id={id} value={b.offset} onChange={(offset) => patch({ offset })} />}</Field>}
+        {b.span === 'along' && (
+          <>
+            <Field label="Near end">{(id) => <LengthInput id={id} value={b.start} onChange={(start) => patch({ start })} />}</Field>
+            <Field label="Far end">{(id) => <LengthInput id={id} value={b.end} onChange={(end) => patch({ end })} />}</Field>
+          </>
+        )}
+        <p className="field-note full">Dropped (11/S4.2): its top is flush with the top plates, which stop where it passes. Put a post under a beam crossing the wall.</p>
+      </div>
+      {typeof r !== 'string' && (
+        <footer className="op-foot">
+          <span>
+            <b>Sides</b> {fmt(r.x0)} – {fmt(r.x1)} from left
+          </span>
+        </footer>
+      )}
+    </article>
   );
 }
 

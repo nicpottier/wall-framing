@@ -79,12 +79,16 @@ The overview's **Text** tab edits the whole project as plain text, kept in sync 
 
 ### Intersections
 - Bath: 2x4 wall, 7-2 from left
+
+### Beams
+- B2: 5 1/2 x 11 7/8 GL, 2 3/4 from right
 ```
 
 - `## Defaults` applies to every wall below it; a wall's own settings override it. Other text is kept as notes; `<!-- -->` comments are dropped.
 - Settings: `length`, `height`, `studs`, `layout`, `top plate`, `exterior`, `headers`, `head height`, `rough sill`, `window ro`, `door ro`, `sheathing`, `corners`.
 - Openings: `<label>: <window|door> <W x H or callout>, <position>`, then any of `head`, `sill`, `header`, `jacks`, `ro W x H`.
 - Posts (under `### Posts`): `<label>: <6x6|4x6|4x4|(2) studs|(3) studs|(4) studs>, <position to centerline>`.
+- Beams (under `### Beams`): `<label>: <size>, <where>`, where is `X from left|right` for a beam crossing the wall (to its centerline), `X to Y from left|right` along a stretch, or `full length`.
 - Intersections (under `### Intersections`): `<label>: <2x4|2x6> wall, <position to its centerline>`, for a wall butting in partway along.
 - Interior walls: `studs: 2x4 @ 16`, `exterior: no`, `sheathing: none`. California corners: `california corners: left 2x6, right 2x4` (the size of the wall butting into each end), `both` or `none`.
 - Tall stretches (under `### Balloon framing`): `<label>: <height> tall, <near> to <far> from <left|right>`, giving both ends of the stretch.
@@ -128,6 +132,10 @@ Left and right are always as seen **from inside** the building. Enter opening po
 
 - **Posts** sit where a beam bears on the wall (S2.2 shows a post below each end of B2; plan note 5 calls for (3) studs minimum at beam ends). A post replaces the layout studs it covers, or the end stud at a wall end, backs any sheathing seam that lands on it, and is an error over an opening's framing or a plate step. Built-up posts list each stud.
 - **Tall stretches** frame part of a wall to its own height where its top plate steps (3/S4.1). A stretch whose bottom plate also changes, or that runs two stories, is better built as its own wall. The stretch gets its own double top plate and stud length; openings inside it frame to it. At each step (3/S4.1): (2) studs each side, 2x4 flat blocking on the tall side in line with the lower plates for at least 4'-0", and a CS16 strap over the sheathing ((14) 8d to the plates, (5) 8d to each block). Sheathing rows and seam blocking follow each stretch's height.
+
+### Beams
+
+Beams are dropped (11/S4.2): the top is flush with the top of the top plates and the joists bear on it, so the plates stop wherever a beam passes. A beam **crossing** a wall sits in a pocket on a post, with no plates over it; the post runs up to the beam's underside, and the plates either side are noted for strapping across it. A beam running **along** a wall caps it: the wall is framed to the beam's underside with a single plate, cut at the posts that carry the beam. Because the plates break at a crossing beam, a framer builds that wall in two pieces, and the example does the same.
 
 ### Intersections and corners
 

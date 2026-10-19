@@ -1,5 +1,5 @@
-import { DEPTH, TYPICAL_HEADER, isHeaderTypeId, isPostTypeId, postType, type HeaderTypeId, type LumberSize, type PostTypeId } from '../lib/lumber';
-import type { IntersectionSpec, Issue, LayoutFrom, OpeningSpec, OpeningType, PostSpec, TallSpec, WallSpec } from '../lib/framing';
+import { DEPTH, TYPICAL_HEADER, headerName, headerType, isHeaderTypeId, isPostTypeId, postType, type HeaderTypeId, type LumberSize, type PostTypeId } from '../lib/lumber';
+import type { BeamSpec, IntersectionSpec, Issue, LayoutFrom, OpeningSpec, OpeningType, PostSpec, TallSpec, WallSpec } from '../lib/framing';
 import type { CornerType, PanelOrientation } from '../lib/sheathing';
 import { parseLength, toFraction } from '../lib/units';
 
@@ -42,6 +42,23 @@ export interface TallInput {
   start: string;
   end: string;
   height: string;
+}
+
+/**
+ * A dropped beam bearing on the wall: crossing it (positioned to its centerline, over a post), along a
+ * stretch of it (both ends), or along its full length.
+ */
+export interface BeamInput {
+  id: string;
+  label: string;
+  type: HeaderTypeId;
+  span: 'cross' | 'along' | 'full';
+  from: WallEnd;
+  /** Crossing: to the beam's centerline. */
+  offset: string;
+  /** Along: each end of the stretch. */
+  start: string;
+  end: string;
 }
 
 /** Another wall butting into this one partway along, positioned to its centerline. */
@@ -97,6 +114,7 @@ export interface WallInput extends WallSettings {
   posts: PostInput[];
   tall: TallInput[];
   intersections: IntersectionInput[];
+  beams: BeamInput[];
 }
 
 export type WallSettingKey = keyof WallSettings | 'name' | 'length' | 'notes';
@@ -141,6 +159,7 @@ export const EXAMPLE_WALL: WallInput = {
   posts: [],
   tall: [],
   intersections: [],
+  beams: [],
 };
 
 const UNIT_DEFAULTS: Record<OpeningType, Pick<OpeningInput, 'width' | 'height'>> = {
@@ -254,7 +273,10 @@ export type WallAction =
   | { type: 'removeTall'; id: string }
   | { type: 'addIntersection' }
   | { type: 'updateIntersection'; id: string; patch: Partial<IntersectionInput> }
-  | { type: 'removeIntersection'; id: string };
+  | { type: 'removeIntersection'; id: string }
+  | { type: 'addBeam' }
+  | { type: 'updateBeam'; id: string; patch: Partial<BeamInput> }
+  | { type: 'removeBeam'; id: string };
 
 const nextLabel = (openings: OpeningInput[], kind: OpeningType, except?: string) => {
   const p = kind === 'door' ? 'D' : 'W';
@@ -348,7 +370,40 @@ export function wallReducer(state: WallInput, action: WallAction): WallInput {
       return { ...state, intersections: state.intersections.map((t) => (t.id === action.id ? { ...t, ...action.patch } : t)) };
     case 'removeIntersection':
       return { ...state, intersections: state.intersections.filter((t) => t.id !== action.id) };
+    case 'addBeam': {
+      const L = parseLength(state.length) || 240;
+      let k = 1;
+      while (state.beams.some((b) => b.label === `B${k}`)) k++;
+      const beam: BeamInput = { id: newId('b'), label: `B${k}`, type: 'gl-5.5x11.875', span: 'cross', from: 'left', offset: toFraction(Math.round(L / 2)), start: '', end: '' };
+      return { ...state, beams: [...state.beams, beam] };
+    }
+    case 'updateBeam':
+      return { ...state, beams: state.beams.map((b) => (b.id === action.id ? { ...b, ...action.patch } : b)) };
+    case 'removeBeam':
+      return { ...state, beams: state.beams.filter((b) => b.id !== action.id) };
   }
+}
+
+/** A beam's sides (or ends) from the wall's left end, or a message. */
+export function resolveBeam(b: BeamInput, wall: WallInput): { x0: number; x1: number } | string {
+  const tag = b.label || 'Beam';
+  const L = parseLength(wall.length);
+  if (!Number.isFinite(L)) return `${tag}: enter a wall length first.`;
+  if (!isHeaderTypeId(b.type)) return `${tag}: pick a beam size.`;
+  if (b.span === 'full') return { x0: 0, x1: L };
+  const flip = (a: number, c: number) => (b.from === 'left' ? [a, c] : [L - c, L - a]) as [number, number];
+  if (b.span === 'cross') {
+    const offset = parseLength(b.offset);
+    if (!isLength(offset)) return `${tag}: enter a valid position.`;
+    const w = headerType(b.type).width;
+    const [x0, x1] = flip(offset - w / 2, offset + w / 2);
+    return { x0, x1 };
+  }
+  const a = parseLength(b.start);
+  const c = parseLength(b.end);
+  if (!isLength(a) || !isLength(c)) return `${tag}: enter valid positions for both ends.`;
+  const [x0, x1] = flip(Math.min(a, c), Math.max(a, c));
+  return { x0, x1 };
 }
 
 /** Wall's left end to an intersecting wall's centerline, or a message. */
@@ -441,6 +496,12 @@ export function toWallSpec(input: WallInput): ParsedWall {
     if (typeof r === 'string') inputIssues.push({ level: 'error', openingId: t.id, message: r });
     else intersections.push({ id: t.id, label: t.label || 'Wall', x: r, width: DEPTH[t.size] });
   }
+  const beams: BeamSpec[] = [];
+  for (const b of input.beams) {
+    const r = resolveBeam(b, input);
+    if (typeof r === 'string') inputIssues.push({ level: 'error', openingId: b.id, message: r });
+    else beams.push({ id: b.id, label: b.label || 'Beam', ...r, depth: headerType(b.type).depth, size: headerName(headerType(b.type)) });
+  }
   const californiaDepth = (v: WallSettings['californiaLeft']) => (v === 'none' ? 0 : DEPTH[v]);
   return {
     spec: {
@@ -467,6 +528,7 @@ export function toWallSpec(input: WallInput): ParsedWall {
       tall,
       studs: input.studSize === '2x4' ? '2x4' : '2x6',
       intersections,
+      beams,
       california: { left: californiaDepth(input.californiaLeft), right: californiaDepth(input.californiaRight) },
     },
     inputIssues,

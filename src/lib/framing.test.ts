@@ -517,3 +517,47 @@ describe('intersections', () => {
     expect(f.issues.some((i) => i.level === 'warning' && i.message.startsWith("Closet: meets this wall inside W1's rough opening"))).toBe(true);
   });
 });
+
+describe('beams', () => {
+  const B2 = { id: 'b', label: 'B2', depth: 11.875, size: '5½ × 11⅞ GL' };
+  // 9'-1 1/4" walls: B2's top flush with the plates puts its underside at 97 3/8".
+  const H = 109.25;
+
+  it('pockets a beam crossing the wall over a post, breaking the top plates', () => {
+    const f = frame(
+      wall({ height: H, posts: [{ id: 'p', label: 'P1', x: 100, type: '6x6' }], beams: [{ ...B2, x0: 100, x1: 105.5 }] }),
+    );
+    expect(f.sections.map((p) => [p.x0, p.x1, p.plates])).toEqual([
+      [0, 100, 2],
+      [100, 105.5, 0],
+      [105.5, 240, 2],
+    ]);
+    expect(of(f, 'post')[0]!.length).toBeCloseTo(97.375 - 1.5);
+    expect(of(f, 'topPlate').every((m) => m.x + m.w <= 100 || m.x >= 105.5)).toBe(true);
+    expect(f.issues.some((i) => i.message.startsWith('B2 (5½ × 11⅞ GL) breaks the top plates'))).toBe(true);
+  });
+
+  it('warns when nothing carries it', () => {
+    const f = frame(wall({ height: H, beams: [{ ...B2, x0: 100, x1: 105.5 }] }));
+    expect(f.issues.some((i) => i.level === 'warning' && i.message.startsWith('B2: nothing carries it'))).toBe(true);
+  });
+
+  it('caps a wall it runs along, with a single plate under it cut at the posts', () => {
+    const f = frame(
+      wall({
+        height: H,
+        posts: [
+          { id: 'd', label: 'D', x: 0, type: '6x6' },
+          { id: 'e', label: 'E', x: 234.5, type: '6x6' },
+        ],
+        beams: [{ ...B2, x0: 0, x1: 240 }],
+      }),
+    );
+    const plates = of(f, 'topPlate');
+    expect(plates).toHaveLength(1);
+    expect(plates[0]).toMatchObject({ x: 5.5, w: 229, z: 97.375 - 1.5 });
+    expect(f.studLength).toBeCloseTo(97.375 - 3);
+    expect(of(f, 'post').every((m) => Math.abs(m.length - 95.875) < 1e-6)).toBe(true);
+    expect(f.issues.some((i) => i.message.includes('caps this wall'))).toBe(true);
+  });
+});

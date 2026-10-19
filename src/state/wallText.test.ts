@@ -200,16 +200,40 @@ describe('interior walls, corners and intersections', () => {
   });
 });
 
+describe('beams', () => {
+  const text = `## Wall
+- length: 20-0
+
+### Beams
+- B2: 5 1/2 x 11 7/8 GL, 2 3/4 from right
+- B3: 4x10, 2-0 to 6-0 from left
+- B4: 5½ × 11⅞ GL, full length
+`;
+
+  it('reads crossing, partial and full-length beams and writes them back', () => {
+    const { project, errors } = parseProjectText(text);
+    expect(errors).toEqual([]);
+    expect(project!.walls[0]!.beams).toMatchObject([
+      { label: 'B2', type: 'gl-5.5x11.875', span: 'cross', from: 'right', offset: '2 3/4' },
+      { label: 'B3', type: '4x10', span: 'along', start: '2-0', end: '6-0' },
+      { label: 'B4', span: 'full' },
+    ]);
+    expect(parseProjectText(projectToText(project!)).project!.walls).toEqual(project!.walls);
+  });
+});
+
 describe('first-floor example', () => {
   it('reads the plans file into the main house walls', () => {
     expect(EXAMPLE_PROJECT.walls.map((w) => w.name)).toEqual([
-      'North',
+      'North · west',
+      'North · east',
       'East · kitchen',
       'East · bay, north return',
       'East · bay',
       'East · bay, south return',
       'East · living',
-      'South',
+      'South · east',
+      'South · west',
       'West · south',
       'West · north',
       'Mudroom stub',
@@ -225,7 +249,13 @@ describe('first-floor example', () => {
       'Stair wall',
     ]);
     expect(EXAMPLE_PROJECT.walls.every((w) => w.tall.length === 0)).toBe(true);
-    expect(EXAMPLE_PROJECT.walls.filter((w) => w.posts.length).map((w) => w.name)).toEqual(['North', 'South', 'Hall']);
+    expect(EXAMPLE_PROJECT.walls.filter((w) => w.posts.length).map((w) => w.name)).toEqual(['North · west', 'South · east', 'Hall']);
+    expect(EXAMPLE_PROJECT.walls.filter((w) => w.beams.length).map((w) => [w.name, w.beams[0]!.span])).toEqual([
+      ['North · west', 'cross'],
+      ['South · east', 'cross'],
+      ['Mudroom stub', 'full'],
+      ['Hall', 'full'],
+    ]);
     const west = EXAMPLE_PROJECT.walls.find((w) => w.name === 'West · north')!;
     expect(west.intersections.map((t) => t.label)).toEqual(['Bath north', 'Bath south']);
     expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'Bath east')).toMatchObject({ studSize: '2x4', sheathed: 'no', californiaLeft: '2x4' });

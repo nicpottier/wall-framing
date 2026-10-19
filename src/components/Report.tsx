@@ -76,13 +76,14 @@ export function Legend({ showSheathing, framing }: { showSheathing: boolean; fra
 
 export function TitleBlock({ framing, name, fmt }: { framing: Framing; name: string; fmt: Formatter }) {
   const { wall } = framing;
+  const main = framing.sections.reduce((a, b) => (b.x1 - b.x0 > a.x1 - a.x0 ? b : a));
   const cells: [string, string][] = [
     ['Wall', name || '—'],
     ['Length', fmt(wall.length)],
     ['Height', framing.maxHeight > wall.height ? `${fmt(wall.height)} – ${fmt(framing.maxHeight)}` : fmt(wall.height)],
     ['Stud length', fmt(framing.studLength)],
     ['Studs', `${wall.studs ?? '2x6'} @ ${wall.spacing}" O.C.`],
-    ['Plates', `1 bottom · ${wall.topPlates} top`],
+    ['Plates', `1 bottom · ${main.plates} top${main.beam ? ` under ${main.beam.label}` : ''}`],
     ['Openings', String(framing.openings.length)],
     ...(framing.posts.length ? [['Posts', String(framing.posts.length)] as [string, string]] : []),
     ...(framing.steps.length ? [['Plate steps', String(framing.steps.length)] as [string, string]] : []),

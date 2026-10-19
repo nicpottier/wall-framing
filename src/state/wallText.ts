@@ -14,6 +14,8 @@
  *   - Stair: 10-1 7/8 tall, 12-6 to 24-1 from left
  *   ### Intersections
  *   - Bath: 2x4 wall, 7-2 from left
+ *   ### Beams
+ *   - B2: 5 1/2 x 11 7/8 gl, 2 3/4 from right
  *
  * Headings split the file into project, defaults and walls; list items are settings, openings, posts
  * or tall stretches; any other text is kept as notes. Opening and post positions are to the
@@ -27,6 +29,7 @@ import {
   parseSize,
   roughOpening,
   type OpeningInput,
+  type BeamInput,
   type IntersectionInput,
   type PostInput,
   type TallInput,
@@ -238,7 +241,7 @@ export function parseProjectText(text: string): ParseResult {
   const projectNotes: string[] = [];
   const defaults: WallSettings = { ...DEFAULT_SETTINGS };
   const walls: WallDraft[] = [];
-  let section: 'none' | 'defaults' | 'wall' | 'openings' | 'posts' | 'tall' | 'intersections' = 'none';
+  let section: 'none' | 'defaults' | 'wall' | 'openings' | 'posts' | 'tall' | 'intersections' | 'beams' = 'none';
   let notesTarget: string[] = projectNotes;
   const wallNotes = new Map<WallDraft, string[]>();
   const current = () => walls[walls.length - 1]!;
@@ -264,7 +267,7 @@ export function parseProjectText(text: string): ParseResult {
         notesTarget = projectNotes;
       } else {
         const draft: WallDraft = {
-          wall: { ...defaults, id: `w${walls.length + 1}`, name, length: '', notes: '', openings: [], posts: [], tall: [], intersections: [] },
+          wall: { ...defaults, id: `w${walls.length + 1}`, name, length: '', notes: '', openings: [], posts: [], tall: [], intersections: [], beams: [] },
           line,
           hasLength: false,
           pending: [],
@@ -288,11 +291,13 @@ export function parseProjectText(text: string): ParseResult {
               ? 'tall'
               : /^(intersections|intersecting walls|tees)$/.test(name)
                 ? 'intersections'
-                : null;
+                : name === 'beams'
+                  ? 'beams'
+                  : null;
       if (!walls.length || !sub) {
         err(
           line,
-          walls.length ? `Unknown section "${m[1]}". Walls have ### Openings, ### Posts, ### Balloon framing and ### Intersections.` : `### ${m[1]} must be inside a wall.`,
+          walls.length ? `Unknown section "${m[1]}". Walls have ### Openings, ### Posts, ### Beams, ### Intersections and ### Balloon framing.` : `### ${m[1]} must be inside a wall.`,
         );
         return;
       }
@@ -306,6 +311,7 @@ export function parseProjectText(text: string): ParseResult {
       if (section === 'posts') return parsePost(item, line, current(), err);
       if (section === 'tall') return parseTall(item, line, current(), err);
       if (section === 'intersections') return parseIntersection(item, line, current(), err);
+      if (section === 'beams') return parseBeam(item, line, current(), err);
 
       const kv = item.match(/^([^:]+):\s*(.*)$/);
       if (!kv) return err(line, `Settings are written "key: value". Got "${item}".`);
@@ -453,6 +459,28 @@ function parsePost(item: string, line: number, draft: WallDraft, err: (line: num
   draft.wall.posts.push(post);
 }
 
+function parseBeam(item: string, line: number, draft: WallDraft, err: (line: number, message: string) => void) {
+  const m = item.match(/^(.+?):\s*(.+)$/);
+  const parts = m ? clauses(m[2]!) : [];
+  if (!m || parts.length !== 2) return err(line, `Beams are written "B2: 5 1/2 x 11 7/8 gl, 2-6 from left" (crossing, to its centerline), "…, 0 to 12-2 from left" (along a stretch) or "…, full length". Got "${item}".`);
+  const label = m[1]!.trim();
+  const type = findHeader(parts[0]!);
+  if (!type) return err(line, `${label}: unknown beam "${parts[0]}". Use one of: ${HEADER_TYPES.map((t) => t.label).join(', ')}.`);
+  if (draft.wall.beams.some((b) => b.label.toLowerCase() === label.toLowerCase())) return err(line, `${label}: another beam on this wall already uses that label.`);
+  const beam: BeamInput = { id: `${draft.wall.id}-beam-${label.replace(/[^\w-]/g, '')}`, label, type, span: 'full', from: 'left', offset: '', start: '', end: '' };
+  const where = parts[1]!;
+  let k: RegExpMatchArray | null;
+  if (/^(full length|the full length|along the wall|whole wall)$/.test(words(where))) beam.span = 'full';
+  else if ((k = where.match(/^(.+?)\s+to\s+(.+?)\s+from\s+(left|right)$/i))) {
+    if (!isLen(lengthText(k[1]!)) || !isLen(lengthText(k[2]!))) return err(line, `${label}: "${k[1]} to ${k[2]}" should be two lengths.`);
+    Object.assign(beam, { span: 'along', start: lengthText(k[1]!), end: lengthText(k[2]!), from: k[3]!.toLowerCase() });
+  } else if ((k = where.match(/^(.+?)\s+from\s+(left|right)$/i))) {
+    if (!isLen(lengthText(k[1]!))) return err(line, `${label}: "${k[1]}" isn't a length.`);
+    Object.assign(beam, { span: 'cross', offset: lengthText(k[1]!), from: k[2]!.toLowerCase() });
+  } else return err(line, `${label}: I don't understand "${where}".`);
+  draft.wall.beams.push(beam);
+}
+
 function parseIntersection(item: string, line: number, draft: WallDraft, err: (line: number, message: string) => void) {
   const m = item.match(/^(.+?):\s*(2x4|2x6)(?:\s+wall)?\s*,\s*(.+?)\s+from\s+(left|right)$/i);
   if (!m) return err(line, `Intersections are written "Bath: 2x4 wall, 7-2 from left", to the wall's centerline. Got "${item}".`);
@@ -560,6 +588,13 @@ export function projectToText(project: Project): string {
     if (wall.tall.length) {
       out.push('', '### Balloon framing');
       for (const t of wall.tall) out.push(`- ${t.label || 'Tall'}: ${t.height} tall, ${t.start} to ${t.end} from ${t.from}`);
+    }
+    if (wall.beams.length) {
+      out.push('', '### Beams');
+      for (const b of wall.beams) {
+        const where = b.span === 'full' ? 'full length' : b.span === 'along' ? `${b.start} to ${b.end} from ${b.from}` : `${b.offset} from ${b.from}`;
+        out.push(`- ${b.label || 'Beam'}: ${headerName(headerType(b.type))}, ${where}`);
+      }
     }
     if (wall.intersections.length) {
       out.push('', '### Intersections');

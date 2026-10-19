@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ROLES, type Framing, type Member, type OpeningFrame } from '../lib/framing';
+import { ROLES, type Framing, type Member, type OpeningFrame, type WallSection } from '../lib/framing';
 import { T } from '../lib/lumber';
 import { toFraction, type Formatter } from '../lib/units';
 import { HDim, VDim, textWidth } from './Dimensions';
@@ -183,6 +183,9 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
     if (a < end) els.push(rect(m, a, end - a, `${m.id}-${a}`));
     return els;
   });
+  // Under a beam the wall is framed to the beam's underside.
+  const framedTop = (p: WallSection) => (p.beam ? p.height - p.beam.depth : p.height);
+  const wallLabel = (p: WallSection) => (p.beam ? `TO ${p.beam.label} ${fmt(framedTop(p))}` : `WALL ${fmt(p.height)}`);
   const leftSec = sections[0]!;
   const rightSec = sections[sections.length - 1]!;
 
@@ -260,6 +263,27 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
         {!compact && <PostOverlay framing={framing} fmt={fmt} v={v} />}
         <IntersectionOverlay framing={framing} fmt={fmt} v={v} compact={compact} />
 
+        {/* dropped beams over the wall, set after it is stood */}
+        {sections
+          .filter((p) => p.beam)
+          .map((p) => {
+            const b = p.beam!;
+            const label = `${b.label} · ${b.size}`;
+            const wide = (p.x1 - p.x0) * ppi > textWidth(label) + 12;
+            return (
+              <g key={`beam${p.x0}`}>
+                <rect className="beam-ov" {...v.box(p.x0, p.height - b.depth, p.x1 - p.x0, b.depth)}>
+                  <title>{`${label}, underside ${fmt(p.height - b.depth)} off the floor`}</title>
+                </rect>
+                {!compact && (
+                  <text className="post-t halo" x={X((p.x0 + p.x1) / 2)} y={wide ? Y(p.height - b.depth / 2) + 4 : Y(p.height) - 8 * bt} textAnchor="middle">
+                    {wide ? label : b.label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
         {openings.map((o) => (
           <OpeningOverlay key={o.spec.id} o={o} framing={framing} fmt={fmt} v={v} compact={compact} />
         ))}
@@ -271,7 +295,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
             {/* overall length */}
             <HDim x1={X(0)} x2={X(L)} y={Y(zTop) - 30 * bt} label={fmt(L)} ext={Y(leftSec.height)} />
             {/* overall height and stud length, off the wall's left end */}
-            <VDim x={X(0) - 70 * sx} y1={Y(leftSec.height)} y2={Y(0)} label={`WALL ${fmt(leftSec.height)}`} ext={X(0)} side={v.side('left')} rotate />
+            <VDim x={X(0) - 70 * sx} y1={Y(framedTop(leftSec))} y2={Y(0)} label={wallLabel(leftSec)} ext={X(0)} side={v.side('left')} rotate />
             <VDim
               x={X(0) - 36 * sx}
               y1={Y(leftSec.plateBottom)}
@@ -284,7 +308,7 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
             {/* the right end too, when it is a different height */}
             {sections.length > 1 && Math.abs(rightSec.height - leftSec.height) > 1e-6 && (
               <>
-                <VDim x={X(L) + 70 * sx} y1={Y(rightSec.height)} y2={Y(0)} label={`WALL ${fmt(rightSec.height)}`} ext={X(L)} side={v.side('right')} rotate />
+                <VDim x={X(L) + 70 * sx} y1={Y(framedTop(rightSec))} y2={Y(0)} label={wallLabel(rightSec)} ext={X(L)} side={v.side('right')} rotate />
                 <VDim
                   x={X(L) + 36 * sx}
                   y1={Y(rightSec.plateBottom)}
