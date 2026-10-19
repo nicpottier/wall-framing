@@ -37,6 +37,12 @@ src/
 
 The data flow is one way: **form or `.wall.md` text → `toWallSpec` → `computeFraming` → views**. The engine knows nothing about React or the DOM, so new framing rules belong in `lib/` along with a test.
 
+## Projects and the example
+
+A project holds several walls. **All walls** shows every wall at one shared scale with a combined cut list and checks labelled by wall; **This wall** shows the selected wall alone. Click a wall's name or **Edit** to edit it in the form.
+
+The example (**Load example**) is the first floor of the Buckley-Watanabe residence, written as [`src/state/examples/first-floor.wall.md`](src/state/examples/first-floor.wall.md): ten exterior walls from the architectural plans (A101, A007, A200, A302) with beams from the structural plans (S2.2). Its notes record the assumptions made reading the plans.
+
 ## Wall spec text (`.wall.md`)
 
 The **Text** tab edits the whole project as plain text, kept in sync with the form. Text that reads cleanly updates the drawing as you type; problems are listed by line.

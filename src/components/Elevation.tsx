@@ -19,6 +19,11 @@ interface Props {
   /** Overlay sheathing seams and their dimensions. */
   showSheathing: boolean;
   view: WallView;
+  /**
+   * Draw at a scale shared with other walls: fit the longest and tallest of them, capped at
+   * maxHeight px, instead of fitting this wall alone.
+   */
+  fit?: { length: number; height: number; maxHeight: number };
 }
 
 /** Margins around the wall, named by wall side so they follow it when the view flips. */
@@ -120,7 +125,7 @@ function widestBay(lo: number, hi: number, xs: number[]) {
   return best.c;
 }
 
-export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing, view }: Props) {
+export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing, view, fit }: Props) {
   const [wrapRef, measured] = useWidth<HTMLDivElement>();
   const { wall, plateBottom, studLength, members, openings, layout } = framing;
   const { length: L, height: H } = wall;
@@ -135,7 +140,9 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing,
   const padT = flipped ? PAD.bottom : PAD.top;
   const padB = flipped ? PAD.top : PAD.bottom;
   const width = Math.max(measured, MIN_WIDTH);
-  const ppi = Math.max(0.5, Math.min((width - padL - padR) / L, (MAX_HEIGHT - padT - padB) / zTop));
+  const ppi = fit
+    ? Math.max(0.5, Math.min((width - padL - padR) / fit.length, (fit.maxHeight - padT - padB) / fit.height))
+    : Math.max(0.5, Math.min((width - padL - padR) / L, (MAX_HEIGHT - padT - padB) / zTop));
   const height = Math.round(padT + padB + zTop * ppi);
   const ox = padL + (width - padL - padR - L * ppi) / 2;
   const v = makeView(orient, ox, padT, ppi, L, zTop, wall.layoutFrom);

@@ -183,6 +183,30 @@ export interface Framing {
   stats: { fullStuds: number; jacks: number; cripples: number; blocks: number; headers: number; pieces: number; linealFeet: number };
 }
 
+export type FramingStats = Framing['stats'];
+
+/** Adds up cut lists from several walls: same member, size and length become one row. */
+export function mergeCutLists(lists: CutGroup[][]): CutGroup[] {
+  const groups = new Map<string, CutGroup>();
+  for (const list of lists) {
+    for (const g of list) {
+      const m = groups.get(g.key);
+      if (!m) groups.set(g.key, { ...g, notes: [...g.notes] });
+      else {
+        m.qty += g.qty;
+        for (const n of g.notes) if (!m.notes.includes(n)) m.notes.push(n);
+      }
+    }
+  }
+  return [...groups.values()].sort((a, b) => ROLES[a.role].order - ROLES[b.role].order || b.length - a.length);
+}
+
+export function sumStats(stats: FramingStats[]): FramingStats {
+  const total: FramingStats = { fullStuds: 0, jacks: 0, cripples: 0, blocks: 0, headers: 0, pieces: 0, linealFeet: 0 };
+  for (const s of stats) for (const k of Object.keys(total) as (keyof FramingStats)[]) total[k] += s[k];
+  return total;
+}
+
 export interface FramingFailure {
   ok: false;
   message: string;
@@ -194,6 +218,8 @@ const EPS = 1e-6;
 export const MIN_CRIPPLE = 2;
 /** Bays narrower than this next to a king stud get flagged. */
 export const TIGHT_BAY = 2;
+/** Seam blocks shorter than this are left out. */
+export const MIN_BLOCK = 3;
 /** 10/S4.1: headers over 6'-0" get (2) trimmers each side, and A35 clips when exterior. */
 export const LONG_HEADER = 72;
 /** 10/S4.1: exterior openings over 8'-0" get a doubled head plate. */
@@ -201,7 +227,7 @@ export const LONG_HEAD_PLATE = 96;
 
 export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | FramingFailure {
   const { length: L, height: H, spacing, topPlates } = wall;
-  if (!(L >= 24) || L > 1200) return { ok: false, message: 'Enter a wall length between 2 and 100 feet.' };
+  if (!(L >= 12) || L > 1200) return { ok: false, message: 'Enter a wall length between 1 and 100 feet.' };
   if (!(H >= 48) || H > 240) return { ok: false, message: 'Enter a wall height between 4 and 20 feet.' };
   if (!(spacing >= 8) || spacing > 48) return { ok: false, message: 'Enter a stud spacing between 8" and 48".' };
   if (!(wall.sheathing.thickness >= 0) || wall.sheathing.thickness > 6) return { ok: false, message: 'Enter a sheathing thickness between 0 and 6".' };
@@ -452,9 +478,14 @@ function placeSeamStuds(
 
     const o = openings.find((op) => s > op.zoneStart + EPS && s < op.zoneEnd - EPS);
     if (o) {
-      const covered = members.some(
-        (m) => VERTICAL.includes(m.role) && m.openingId === o.spec.id && s >= m.x - EPS && s <= m.x + T + EPS,
-      );
+      const own = members.filter((m) => m.openingId === o.spec.id);
+      const under = (m: Member) => s >= m.x - EPS && s <= m.x + m.w + EPS;
+      const onJambs = own.some((m) => (m.role === 'king' || m.role === 'jack') && under(m));
+      // Over the opening the sheathing is cut away; it needs backing above (cripple, or the header or
+      // filler filling the space) and below (a cripple under a sill; doors have nothing below).
+      const above = o.gapAbove < 1 / 32 || own.some((m) => (m.role === 'crippleTop' || m.role === 'filler') && under(m));
+      const below = o.spec.type === 'door' || !own.some((m) => m.role === 'crippleBottom') || own.some((m) => m.role === 'crippleBottom' && under(m));
+      const covered = onJambs || (above && below);
       if (!covered) {
         issue(
           'note',
@@ -503,7 +534,8 @@ function placeSeamBlocking(
     for (let i = 1; i < posts.length; i++) {
       const x0 = posts[i - 1]!.x + T;
       const x1 = posts[i]!.x;
-      if (x1 - x0 < 0.25) continue;
+      // Studs this close back the seam themselves; a sliver of block can't be nailed.
+      if (x1 - x0 < MIN_BLOCK) continue;
       const hitsFlat = members.some(
         (m) => (m.role === 'header' || m.role === 'headPlate' || m.role === 'sill' || m.role === 'filler') && overlapsX(m, x0, x1) && m.z < bz + BLOCK_FACE - EPS && m.z + m.h > bz + EPS,
       );

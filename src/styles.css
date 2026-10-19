@@ -871,6 +871,51 @@ textarea::placeholder {
 }
 
 /* ---------- Drawing sheet ---------- */
+.wall-sheet.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.wall-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line-2);
+}
+.wall-sheet-title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.wall-sheet-title .name {
+  font: 600 16px/1.2 var(--f-cond);
+}
+.wall-sheet-title .sub {
+  font: 400 12px var(--f-mono);
+  color: var(--muted);
+}
+.wall-sheet-title:hover .name {
+  color: var(--accent);
+}
+.wall-sheet-flags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wall-sheet .svg-wrap {
+  min-height: 0;
+}
+
 .sheet {
   background: var(--sheet);
   border: 1px solid var(--line);

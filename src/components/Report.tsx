@@ -1,4 +1,4 @@
-import { ROLES, type CutGroup, type Framing, type Issue, type Role } from '../lib/framing';
+import { ROLES, type CutGroup, type Framing, type FramingStats, type Issue, type Role } from '../lib/framing';
 import type { Formatter } from '../lib/units';
 
 /** CSS swatch token for a role (top plates share the plate color, both cripple kinds share one). */
@@ -74,25 +74,33 @@ export function TitleBlock({ framing, name, fmt }: { framing: Framing; name: str
 }
 
 interface CutListProps {
-  framing: Framing | null;
+  /** Rows to list; null when the wall can't be framed. */
+  rows: CutGroup[] | null;
+  stats: FramingStats | null;
+  /** Stud length for a single wall; left off when walls of different heights are combined. */
+  studLength?: number;
+  /** Shown beside the title, e.g. "10 walls". */
+  scope?: string;
   fmt: Formatter;
   highlight: string | null;
   onHighlight: (group: string | null) => void;
 }
 
-export function CutList({ framing, fmt, highlight, onHighlight }: CutListProps) {
-  const stats = framing?.stats;
+export function CutList({ rows, stats, studLength, scope, fmt, highlight, onHighlight }: CutListProps) {
   return (
     <section className="panel" aria-labelledby="cut-h">
       <div className="panel-head">
-        <h2 className="eyebrow" id="cut-h">
-          Cut list
-        </h2>
+        <span className="panel-title">
+          <h2 className="eyebrow" id="cut-h">
+            Cut list
+          </h2>
+          {scope && <span className="panel-summary">{scope}</span>}
+        </span>
       </div>
-      {framing && stats && (
+      {rows && stats && (
         <>
           <div className="stats">
-            <Stat n={stats.fullStuds} label={`full-length studs @ ${fmt(framing.studLength)}`} />
+            <Stat n={stats.fullStuds} label={studLength ? `full-length studs @ ${fmt(studLength)}` : 'full-length studs'} />
             <Stat n={stats.jacks} label="jacks" />
             <Stat n={stats.cripples} label="cripples" />
             <Stat n={stats.blocks} label="blocks" />
@@ -111,7 +119,7 @@ export function CutList({ framing, fmt, highlight, onHighlight }: CutListProps) 
                 </tr>
               </thead>
               <tbody>
-                {framing.cutList.map((g, i) => (
+                {rows.map((g, i) => (
                   <tr key={g.key} className={highlight === g.key ? 'hl' : undefined} onMouseEnter={() => onHighlight(g.key)}>
                     <td>
                       <span className="mname">
@@ -122,7 +130,7 @@ export function CutList({ framing, fmt, highlight, onHighlight }: CutListProps) 
                     <td className="len">{g.size}</td>
                     <td className="num">{g.qty}</td>
                     <td className="len">{fmt(g.length)}</td>
-                    <td className="note">{repeatsNote(framing.cutList, i) ? '' : g.notes.join('. ')}</td>
+                    <td className="note">{repeatsNote(rows, i) ? '' : g.notes.join('. ')}</td>
                   </tr>
                 ))}
               </tbody>

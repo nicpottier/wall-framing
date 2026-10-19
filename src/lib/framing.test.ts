@@ -306,6 +306,11 @@ describe('sheathing', () => {
     expect(frame(wall({ height: 96, sheathing: sheathing({ startHeight: 0 }) })).sheathing.top).toBe(96);
   });
 
+  it('never cuts slivers of blocking', () => {
+    const f = frame(wall({ sheathing: sheathing({ startHeight: 12, seamStuds: 'double' }), openings: [opening()] }));
+    expect(of(f, 'blocking').every((b) => b.w >= 3)).toBe(true);
+  });
+
   it('can turn blocking off', () => {
     const f = frame(wall({ sheathing: sheathing({ startHeight: 12, blockSeams: false }) }));
     expect(of(f, 'blocking')).toHaveLength(0);

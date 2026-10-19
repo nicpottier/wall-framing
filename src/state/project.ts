@@ -1,4 +1,6 @@
 import { isHeaderTypeId } from '../lib/lumber';
+import firstFloorText from './examples/first-floor.wall.md?raw';
+import { parseProjectText } from './wallText';
 import { parseLength, toFraction, type Units } from '../lib/units';
 import {
   DEFAULT_SETTINGS,
@@ -28,12 +30,15 @@ export interface DisplayPrefs {
   units: Units;
   view: 'standing' | 'deck';
   showSheathing: 'on' | 'off';
+  /** Show only the selected wall, or every wall in the project. */
+  scope: 'one' | 'all';
 }
 
-export const DEFAULT_PREFS: DisplayPrefs = { units: 'in', view: 'standing', showSheathing: 'on' };
+export const DEFAULT_PREFS: DisplayPrefs = { units: 'in', view: 'standing', showSheathing: 'on', scope: 'all' };
 
-export const EXAMPLE_PROJECT: Project = {
-  title: 'Buckley-Watanabe residence',
+/** The first floor of the Buckley-Watanabe residence, from its architectural and structural plans. */
+export const EXAMPLE_PROJECT: Project = parseProjectText(firstFloorText).project ?? {
+  title: '',
   notes: '',
   defaults: { ...DEFAULT_SETTINGS },
   walls: [EXAMPLE_WALL],
@@ -112,6 +117,7 @@ function migrateV2(raw: Record<string, unknown>): Saved {
     return typeof ro === 'string' || !Number.isFinite(offset) ? o : { ...o, offset: toFraction(offset + ro.width / 2) };
   });
   const prefs: DisplayPrefs = {
+    ...DEFAULT_PREFS,
     units: raw.units === 'ftin' ? 'ftin' : 'in',
     view: raw.view === 'deck' ? 'deck' : 'standing',
     showSheathing: raw.showSheathing === 'off' ? 'off' : 'on',

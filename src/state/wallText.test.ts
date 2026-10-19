@@ -122,6 +122,24 @@ describe('projectToText', () => {
   });
 });
 
+describe('first-floor example', () => {
+  it('reads the plans file into ten walls', () => {
+    expect(EXAMPLE_PROJECT.walls.map((w) => w.name)).toEqual([
+      'North · garage',
+      'East · garage',
+      'East · kitchen',
+      'East · bay, north return',
+      'East · bay',
+      'East · bay, south return',
+      'East · living',
+      'South',
+      'West · house',
+      'West · stair',
+    ]);
+    expect(EXAMPLE_PROJECT.defaults).toMatchObject({ height: '9-1 1/4', windowHeadHeight: '7-8' });
+  });
+});
+
 describe('loadSaved', () => {
   it('moves v2 positions from the rough opening edge to the centerline', () => {
     const store = new Map<string, string>();
