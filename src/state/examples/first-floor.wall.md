@@ -2,7 +2,7 @@
 
 418 Cedar St, Leavenworth. First-floor walls of the main house and its bump-out: exterior WT34/WT35 (2x6), the garage partition WT82 on grid C, and the interior walls (2x4 where the plan draws them 4 1/2" over drywall, 2x6 where it draws 6 1/2"), from the architectural set: plan A101, window and door schedules A007, levels A200 and section A302. Beams and posts from S2.2 (Harezlak Engineering, Rev. 1); other headers are 4x8 per plan note 3.
 
-Exterior walls are seen from inside. Interior walls are seen from the south or west: east-west walls run west to east, north-south walls run north to south. Interior positions come from the wall lines in A101. Beam B2 (5 1/2 x 11 7/8 GL) runs north-south on grid 2, dropped per 11/S4.2 so its top is flush with the top plates: it breaks the plates of the north and south walls, which are built in two pieces with its posts, and caps the walls under it. Walls are split where a framer would build them separately. Plan positions are measured east and north from the outside corner of the framing at the southwest (grids 1 and F), to each wall's left end on the face it is seen from. Lengths are framing lengths: the south wall runs through the corners and the east and west walls butt into it. The house's east and west walls start 5 1/2" north of grid C, past the garage partition on C, which butts between them. The garage walls are left out for now, and so is the west wall along the stairs: the floor is open above it (S2.2) and below it (S2.1), so it is balloon framed two stories and built on its own, window 4 with it, along with the closet's north wall where it meets that stretch. Where a wall butts into another partway along, the wall it meets lists it under Intersections and gets backer studs and ladder blocking; where it butts into an end, that end gets a California corner. Verify in the field.
+Exterior walls are seen from inside. Interior walls are seen from the south or west: east-west walls run west to east, north-south walls run north to south. Interior positions come from the wall lines in A101. Beam B2 (5 1/2 x 11 7/8 GL) runs north-south on grid 2, dropped per 11/S4.2 so its top is flush with the top plates: it breaks the plates of the north and south walls, which are built in two pieces ending at its posts, and caps the walls under it. Its four posts stand on their own on the subfloor (listed under Posts at the end), with the walls either side ending at them. Walls are split where a framer would build them separately. Plan positions are measured east and north from the outside corner of the framing at the southwest (grids 1 and F), to each wall's left end on the face it is seen from. Lengths are framing lengths: the south wall runs through the corners and the east and west walls butt into it. The house's east and west walls start 5 1/2" north of grid C, past the garage partition on C, which butts between them. The garage walls are left out for now, and so is the west wall along the stairs: the floor is open above it (S2.2) and below it (S2.1), so it is balloon framed two stories and built on its own, window 4 with it, along with the closet's north wall where it meets that stretch. Where a wall butts into another partway along, the wall it meets lists it under Intersections and gets backer studs and ladder blocking; where it butts into an end, that end gets a California corner. Verify in the field.
 
 ## Defaults
 - studs: 2x6 @ 16
@@ -19,24 +19,15 @@ Exterior walls are seen from inside. Interior walls are seen from the south or w
 - corners: left none, right none
 
 ## North · west
-- length: 8-0 1/8
+- length: 7-6 5/8
 - plan: 5 1/2, 408 9/16, running east
 - exterior: no
 - sheathing: vertical, 1/2" thick, start 0, double seam studs, block seams
 
-The north wall of the living space is the fire-rated garage partition WT82 (UL305), sheathed as shear wall SW-6 (8/S4.0); the sheathing thickness is assumed. Beam B2 (5 1/2 x 11 7/8 GL) lands on it at grid 2, dropped per 11/S4.2 so its top is flush with the top plates. That breaks the plates, so the wall is built in two pieces either side of the beam, with the 6x6 post under B2 at the end of this one, in line with the P1 post in the basement (S2.1); plan note 5 calls for (3) studs at least. Door C is the fire-rated 2'-10" x 6'-8" from the garage (A007), under the 4x12 called out on S2.2. The mudroom stub wall butts in at the post.
+The north wall of the living space is the fire-rated garage partition WT82 (UL305), sheathed as shear wall SW-6 (8/S4.0); the sheathing thickness is assumed. Beam B2 (5 1/2 x 11 7/8 GL) lands on post P1 north at grid 2, dropped per 11/S4.2 so its top is flush with the top plates. The post stands on the subfloor on its own, so the wall is built in two pieces that end at it, their end studs nailed to it and their top plates strapped across the beam. Door C is the fire-rated 2'-10" x 6'-8" from the garage (A007), under the 4x12 called out on S2.2.
 
 ### Openings
 - C: door 2-10 x 6-8, 2-6 1/2 from left, header 4x12
-
-### Posts
-- P1: 6x6, 2 3/4 from right
-
-### Beams
-- B2: 5 1/2 x 11 7/8 GL, 2 3/4 from right
-
-### Intersections
-- Mudroom stub: 2x4 wall, 7-8 3/8 from left
 
 ## North · east
 - length: 15-0 7/8
@@ -45,7 +36,7 @@ The north wall of the living space is the fire-rated garage partition WT82 (UL30
 - exterior: no
 - sheathing: vertical, 1/2" thick, start 0, double seam studs, block seams
 
-The rest of the garage partition, from beam B2 to the east wall.
+The rest of the garage partition, from post P1 north to the east wall.
 
 ## East · kitchen
 - length: 24-5 1/2
@@ -90,21 +81,15 @@ From the bay back to the living wall's inside face; the living wall stops agains
 - corners: left none, right inside
 
 ## South · east
-- length: 15-11 7/8
+- length: 15-6 3/8
 - plan: 288, 5 1/2, running west
 - corners: left outside, right none
 - california corners: left 2x6
 
-From the east corner to beam B2 at grid 2, which bears on a 6x6 post at the end of this piece, over a post below (S2.2) in line with the P1 post in the basement (S2.1). B2 is dropped (11/S4.2), so it breaks the top plates and the south wall is built in two pieces.
+From the east corner to post P1 south at grid 2, which carries beam B2 over a post below (S2.2) in line with the P1 post in the basement (S2.1). B2 is dropped (11/S4.2), so it breaks the top plates; the post stands on the subfloor and the south wall is built in two pieces that end at it.
 
 ### Openings
 - 2: window 6-0 x 5-6, 8-0 from left, header 4x10
-
-### Posts
-- P1: 6x6, 2 3/4 from right
-
-### Beams
-- B2: 5 1/2 x 11 7/8 GL, 2 3/4 from right
 
 ## South · west
 - length: 8-0 1/8
@@ -113,7 +98,7 @@ From the east corner to beam B2 at grid 2, which bears on a 6x6 post at the end 
 - corners: left none, right outside
 - california corners: right 2x6
 
-From beam B2 to the west corner. Window 1 (3'-0" x 1'-0" fixed, head 8'-0") sits over door A; one rough opening frames both.
+From post P1 south to the west corner. Window 1 (3'-0" x 1'-0" fixed, head 8'-0") sits over door A; one rough opening frames both.
 
 ### Openings
 - A: door 3-0 x 6-8, 5-3 1/2 from right, ro 3-2 x 8-0
@@ -148,7 +133,7 @@ From window 7's king stud to the garage partition. The second-floor stair openin
 - exterior: no
 - sheathing: none
 
-Runs south from the north wall at grid 2, beside the refrigerator, right under beam B2, so it is framed to the beam's underside.
+Runs south from post P1 north at grid 2, beside the refrigerator, right under beam B2, so it is framed to the beam's underside.
 
 ### Beams
 - B2: 5 1/2 x 11 7/8 GL, full length
@@ -202,31 +187,26 @@ East side of the bath and office, backing the kitchen niche. The niche's north a
 - exterior: no
 - sheathing: none
 
-Drawn 6 1/2" over drywall, so 2x6. It runs from the bath's east wall to the hall wall at grid D.
+Drawn 6 1/2" over drywall, so 2x6. It runs from the bath's east wall to post D at grid 2.
 
 ## Hall
-- length: 12-2 3/4
-- plan: 96 1/8, 273 1/8, running south
+- length: 11-3 3/4
+- plan: 96 1/8, 267 5/8, running south
 - studs: 2x6 @ 16
 - exterior: no
 - sheathing: none
-- california corners: left 2x6, right 2x6
 
-The 2x6 wall on grid 2 from the kitchen niche to the closet, right under beam B2. B2 is dropped (11/S4.2), so it caps this wall in place of the top plates: the wall is framed to its underside with a single plate, and the posts at grids D and E run up to it under PC6Z post caps (S2.2), over P1 posts in the basement. Door F closes off the office and stair hall. G is the 6'-0" x 7'-0" sliding closet door.
+The 2x6 wall on grid 2 between posts D and E, right under beam B2. B2 is dropped (11/S4.2), so it caps this wall in place of the top plates: the wall is framed to its underside with a single plate, and its end studs nail to the posts, which stand on the subfloor under PC6Z post caps (S2.2) over P1 posts in the basement. Door F closes off the office and stair hall; its hinge side is right at post D, so the end stud serves as its king. G is the 6'-0" x 7'-0" sliding closet door.
 
 ### Openings
-- F: door 2-8 x 6-8, 2-1 from left, ro 33 x 82 1/2
-- G: door 6-0 x 7-0, 8-3 5/8 from left
-
-### Posts
-- D: 6x6, 2 3/4 from left
-- E: 6x6, 2 3/4 from right
+- F: door 2-8 x 6-8, 1-7 1/2 from left, ro 33 x 82 1/2
+- G: door 6-0 x 7-0, 7-10 1/4 from left
 
 ### Beams
 - B2: 5 1/2 x 11 7/8 GL, full length
 
 ### Intersections
-- Closet north: 2x4 wall, 3-11 1/8 from left
+- Closet north: 2x4 wall, 3-5 5/8 from left
 
 ## Closet north
 - length: 7-6 5/8
@@ -257,7 +237,7 @@ From the west wall to the hall wall. Pocket door J (2'-8" x 6'-8") slides east i
 - exterior: no
 - sheathing: none
 
-Drawn 6 1/2" over drywall, so 2x6. The stair wall butts into its west end.
+Drawn 6 1/2" over drywall, so 2x6. It runs to post E at grid 2; the stair wall butts into its west end.
 
 ### Intersections
 - Closet west: 2x4 wall, 5 3/4 from left
@@ -270,3 +250,9 @@ Drawn 6 1/2" over drywall, so 2x6. The stair wall butts into its west end.
 - sheathing: none
 
 Beside the closet's west wall at the foot of the stairs.
+
+## Posts
+- P1 north: 6x6 under 5 1/2 x 11 7/8 GL, at 98 7/8, 411 5/16
+- D: 6x6 under 5 1/2 x 11 7/8 GL, at 98 7/8, 270 3/8
+- E: 6x6 under 5 1/2 x 11 7/8 GL, at 98 7/8, 129 1/8
+- P1 south: 6x6 under 5 1/2 x 11 7/8 GL, at 98 7/8, 2 3/4

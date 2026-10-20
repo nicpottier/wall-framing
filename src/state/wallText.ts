@@ -36,7 +36,7 @@ import {
   type WallInput,
   type WallSettings,
 } from './wall';
-import type { Project } from './project';
+import type { Project, ProjectPost } from './project';
 
 export interface TextError {
   line: number;
@@ -241,7 +241,10 @@ export function parseProjectText(text: string): ParseResult {
   const projectNotes: string[] = [];
   const defaults: WallSettings = { ...DEFAULT_SETTINGS };
   const walls: WallDraft[] = [];
-  let section: 'none' | 'defaults' | 'wall' | 'openings' | 'posts' | 'tall' | 'intersections' | 'beams' = 'none';
+  let section: 'none' | 'defaults' | 'wall' | 'openings' | 'posts' | 'tall' | 'intersections' | 'beams' | 'projectPosts' = 'none';
+  const projectPosts: ProjectPost[] = [];
+  // Text under ## Posts isn't kept.
+  const postNotes: string[] = [];
   let notesTarget: string[] = projectNotes;
   const wallNotes = new Map<WallDraft, string[]>();
   const current = () => walls[walls.length - 1]!;
@@ -265,6 +268,9 @@ export function parseProjectText(text: string): ParseResult {
         if (walls.length) err(line, 'Put ## Defaults before the first wall.');
         section = 'defaults';
         notesTarget = projectNotes;
+      } else if (/^posts$/i.test(name)) {
+        section = 'projectPosts';
+        notesTarget = postNotes;
       } else {
         const draft: WallDraft = {
           wall: { ...defaults, id: `w${walls.length + 1}`, name, length: '', notes: '', planX: '', planY: '', planRun: '', openings: [], posts: [], tall: [], intersections: [], beams: [] },
@@ -281,6 +287,7 @@ export function parseProjectText(text: string): ParseResult {
       return;
     }
     if ((m = t.match(/^###\s+(.+)$/))) {
+      if (section === 'projectPosts') return err(line, '## Posts has no subsections; list each post under it.');
       const name = words(m[1]!);
       const sub =
         name === 'openings'
@@ -307,6 +314,7 @@ export function parseProjectText(text: string): ParseResult {
     if ((m = t.match(/^[-*]\s+(.*)$/))) {
       const item = m[1]!.trim();
       if (section === 'none') return err(line, 'Put settings under ## Defaults or a ## wall heading.');
+      if (section === 'projectPosts') return parseProjectPost(item, line, projectPosts, err);
       if (section === 'openings') return parseOpening(item, line, current(), err);
       if (section === 'posts') return parsePost(item, line, current(), err);
       if (section === 'tall') return parseTall(item, line, current(), err);
@@ -353,7 +361,7 @@ export function parseProjectText(text: string): ParseResult {
   errors.sort((a, b) => a.line - b.line);
   if (errors.length) return { project: null, errors };
   return {
-    project: { title, notes: joinNotes(projectNotes), defaults, walls: walls.map((d) => d.wall), selected: 0 },
+    project: { title, notes: joinNotes(projectNotes), defaults, walls: walls.map((d) => d.wall), posts: projectPosts, selected: 0 },
     errors,
   };
 }
@@ -466,6 +474,20 @@ function parsePost(item: string, line: number, draft: WallDraft, err: (line: num
   }
   if (!placed) return err(line, `${tag} add a position to its centerline, like "8-0 from right" or "centered".`);
   draft.wall.posts.push(post);
+}
+
+/** A freestanding post: "P1 north: 6x6 under 5 1/2 x 11 7/8 GL, at 98 7/8, 411 5/16" (its center on the plan). */
+function parseProjectPost(item: string, line: number, posts: ProjectPost[], err: (line: number, message: string) => void) {
+  const m = item.match(/^(.+?):\s*(.+?)\s+under\s+(.+?)\s*,\s*at\s+(.+?)\s*,\s*(.+)$/i);
+  if (!m) return err(line, `Posts are written "P1: 6x6 under 5 1/2 x 11 7/8 GL, at 98 7/8, 411 5/16", its center on the plan. Got "${item}".`);
+  const label = m[1]!.trim();
+  const type = findPost(m[2]!);
+  if (!type) return err(line, `${label}: unknown post "${m[2]}". Use one of: ${POST_TYPES.map((t) => t.label).join(', ')}.`);
+  const beam = findHeader(m[3]!);
+  if (!beam) return err(line, `${label}: unknown beam "${m[3]}". Use one of: ${HEADER_TYPES.map((t) => t.label).join(', ')}.`);
+  if (!isLen(lengthText(m[4]!)) || !isLen(lengthText(m[5]!))) return err(line, `${label}: the plan position should be two lengths, east then north.`);
+  if (posts.some((p) => p.label.toLowerCase() === label.toLowerCase())) return err(line, `${label}: another post already uses that label.`);
+  posts.push({ id: `post-${label.replace(/[^\w-]/g, '')}`, label, type, beam, x: lengthText(m[4]!), y: lengthText(m[5]!) });
 }
 
 function parseBeam(item: string, line: number, draft: WallDraft, err: (line: number, message: string) => void) {
@@ -610,6 +632,10 @@ export function projectToText(project: Project): string {
       out.push('', '### Intersections');
       for (const t of wall.intersections) out.push(`- ${t.label || 'Wall'}: ${t.size} wall, ${t.offset} from ${t.from}`);
     }
+  }
+  if (project.posts.length) {
+    out.push('', '## Posts');
+    for (const p of project.posts) out.push(`- ${p.label}: ${postType(p.type).label} under ${headerName(headerType(p.beam))}, at ${p.x}, ${p.y}`);
   }
   return out.join('\n') + '\n';
 }

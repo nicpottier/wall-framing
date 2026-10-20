@@ -80,7 +80,14 @@ export function TitleBlock({ framing, name, fmt }: { framing: Framing; name: str
   const cells: [string, string][] = [
     ['Wall', name || '—'],
     ['Length', fmt(wall.length)],
-    ['Height', framing.maxHeight > wall.height ? `${fmt(wall.height)} – ${fmt(framing.maxHeight)}` : fmt(wall.height)],
+    [
+      'Height',
+      main.beam
+        ? `${fmt(wall.height - main.beam.depth)} to ${main.beam.label}`
+        : framing.maxHeight > wall.height
+          ? `${fmt(wall.height)} – ${fmt(framing.maxHeight)}`
+          : fmt(wall.height),
+    ],
     ['Stud length', fmt(framing.studLength)],
     ['Studs', `${wall.studs ?? '2x6'} @ ${wall.spacing}" O.C.`],
     ['Plates', `1 bottom · ${main.plates} top${main.beam ? ` under ${main.beam.label}` : ''}`],

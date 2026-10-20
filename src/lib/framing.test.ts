@@ -436,6 +436,16 @@ describe('plate steps', () => {
   });
 });
 
+describe('openings at a wall end', () => {
+  it('use the end stud as the king', () => {
+    // RO from 3": one jack 1 1/2 to 3, king where the end stud is.
+    const f = frame(wall({ openings: [opening({ type: 'door', x: 3, width: 34, height: 82.5, sill: 0 })] }));
+    expect(f.issues.filter((i) => i.level === 'error')).toEqual([]);
+    expect(xs(f, 'king')).toEqual([38.5]);
+    expect(of(f, 'stud').some((m) => m.isEnd && m.x === 0)).toBe(true);
+  });
+});
+
 describe('2x4 and unsheathed walls', () => {
   const f = frame(wall({ studs: '2x4', sheathing: { ...NO_SHEATHING_EFFECTS, enabled: false, startHeight: 12 }, openings: [opening()] }));
 

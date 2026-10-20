@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { computeFraming, mergeCutLists, sumStats } from './lib/framing';
 import { makeFormatter, type Formatter } from './lib/units';
 import { toWallSpec, type WallAction, type WallInput } from './state/wall';
-import { loadSaved, projectReducer, saveProject, type DisplayPrefs } from './state/project';
+import { loadSaved, postCutList, projectReducer, resolveProjectPost, saveProject, type DisplayPrefs } from './state/project';
 import { parseProjectText, projectToText } from './state/wallText';
 import { BrandMark } from './components/BrandMark';
 import { Segmented } from './components/controls';
@@ -60,9 +60,19 @@ export default function App() {
   const fmt = useMemo(() => makeFormatter(prefs.units), [prefs.units]);
   const results = useMemo(() => project.walls.map((w) => frameWall(w, fmt)), [project.walls, fmt]);
   const framed = results.flatMap((r) => (r.result.ok ? [r.result] : []));
-  const rows = useMemo(() => mergeCutLists(framed.map((f) => f.cutList)), [framed]);
+  const postRows = useMemo(() => postCutList(project), [project]);
+  const rows = useMemo(() => mergeCutLists([...framed.map((f) => f.cutList), postRows]), [framed, postRows]);
   const stats = useMemo(() => sumStats(framed.map((f) => f.stats)), [framed]);
-  const allIssues = useMemo(() => results.flatMap((r) => r.issues.map((i) => ({ ...i, message: `${r.wall.name}: ${i.message}` }))), [results]);
+  const allIssues = useMemo(
+    () => [
+      ...results.flatMap((r) => r.issues.map((i) => ({ ...i, message: `${r.wall.name}: ${i.message}` }))),
+      ...project.posts.flatMap((p) => {
+        const r = resolveProjectPost(p, project.defaults);
+        return typeof r === 'string' ? [{ level: 'error' as const, message: r }] : [];
+      }),
+    ],
+    [results, project.posts, project.defaults],
+  );
   const fileName = `${(project.title || 'walls').replace(/[^\w-]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'walls'}.wall.md`;
 
   const addWall = () => {
@@ -108,6 +118,8 @@ export default function App() {
 
       {editing === null ? (
         <Overview
+          project={project}
+          dispatch={dispatch}
           title={project.title}
           results={results}
           tab={overviewTab}

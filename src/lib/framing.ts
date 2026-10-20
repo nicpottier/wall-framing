@@ -362,6 +362,8 @@ export const LONG_HEADER = 72;
 export const LONG_HEAD_PLATE = 96;
 /** 3/S4.1: flat blocking runs at least 4'-0" past a plate step on the tall side. */
 export const STEP_BLOCKING = 48;
+/** A king this close to where the end stud goes is the end stud. */
+const SAME_STUD = 1 / 16;
 /** A beam stretch this narrow is a pocket over a post, with no plate under the beam. */
 const POCKET = 6;
 /** 3/S4.1: (2) studs each side of a plate step, minimum. */
@@ -454,11 +456,14 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
     const kingRight = spec.x + spec.width + n * T;
     let hasError = false;
 
-    if (kingLeft < T - EPS) {
+    // An opening right at a wall end uses the end stud as its king.
+    const endKingLeft = Math.abs(kingLeft) < SAME_STUD;
+    const endKingRight = Math.abs(kingRight + T - L) < SAME_STUD;
+    if (kingLeft < T - EPS && !endKingLeft) {
       hasError = true;
       issue('error', `${tag}: king stud runs into the end stud. Move the opening at least ${fmt(T - kingLeft)} to the right.`, spec.id);
     }
-    if (kingRight + T > L - T + EPS) {
+    if (kingRight + T > L - T + EPS && !endKingRight) {
       hasError = true;
       issue('error', `${tag}: king stud runs into the end stud. Move the opening at least ${fmt(kingRight + T - (L - T))} to the left.`, spec.id);
     }
@@ -527,8 +532,8 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
     openings.push(frame);
 
     const oid = spec.id;
-    add({ role: 'king', x: kingLeft, z: T, w: T, h: studLength, length: studLength, openingId: oid });
-    add({ role: 'king', x: kingRight, z: T, w: T, h: studLength, length: studLength, openingId: oid });
+    if (!endKingLeft) add({ role: 'king', x: kingLeft, z: T, w: T, h: studLength, length: studLength, openingId: oid });
+    if (!endKingRight) add({ role: 'king', x: kingRight, z: T, w: T, h: studLength, length: studLength, openingId: oid });
     const jackLength = headerBottom - T;
     for (let i = 0; i < n; i++) {
       add({ role: 'jack', x: spec.x - (i + 1) * T, z: T, w: T, h: jackLength, length: jackLength, openingId: oid });

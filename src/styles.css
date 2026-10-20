@@ -1651,3 +1651,74 @@ svg.plan.focus .plan-wall:not(.hot) {
 .plan-notes .note {
   color: var(--muted);
 }
+
+.plan-post.free {
+  fill: var(--w-post);
+  stroke: var(--sec-structure);
+  stroke-width: 1.4;
+}
+.plan-posts {
+  border-top: 1px solid var(--line-2);
+  padding: 10px 16px 14px;
+}
+.plan-posts-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.plan-posts-head h3 {
+  margin: 0;
+  font: 600 14px var(--f-cond);
+}
+.plan-posts-head .sub {
+  font: 500 12px var(--f-mono);
+  color: var(--muted);
+}
+.plan-posts-head .btn {
+  margin-left: auto;
+}
+.plan-posts-table {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.plan-posts-table th {
+  text-align: left;
+  font: 600 10px var(--f-cond);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 4px 6px;
+}
+.plan-posts-table td {
+  padding: 3px 6px;
+}
+.plan-posts-table input,
+.plan-posts-table select {
+  width: 100%;
+  min-width: 0;
+}
+.plan-posts-table tr.err td:first-child input {
+  border-color: var(--err);
+}
+.plan-posts-table .op-remove {
+  color: var(--muted);
+  font-size: 18px;
+}
+@media (max-width: 640px) {
+  .plan-posts-table thead {
+    display: none;
+  }
+  .plan-posts-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr 28px;
+    gap: 4px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .plan-posts-table td {
+    padding: 0;
+  }
+}

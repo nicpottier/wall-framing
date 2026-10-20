@@ -1,3 +1,5 @@
+import type { Dispatch } from 'react';
+import type { Project, ProjectAction } from '../state/project';
 import type { CutGroup, Framing, FramingFailure, FramingStats, Issue } from '../lib/framing';
 import type { Formatter } from '../lib/units';
 import type { WallInput } from '../state/wall';
@@ -18,6 +20,8 @@ export interface WallResult {
 }
 
 interface Props {
+  project: Project;
+  dispatch: Dispatch<ProjectAction>;
   title: string;
   results: WallResult[];
   tab: OverviewTab;
@@ -48,7 +52,7 @@ export function Overview(props: Props) {
     height: Math.max(48, ...framed.map((f) => f.maxHeight)),
     maxHeight: CARD_MAX_HEIGHT,
   };
-  const { overlaps } = usePlan(results);
+  const { overlaps } = usePlan(results, props.project);
   const problems = results.reduce((n, r) => n + r.issues.filter((i) => i.level === 'error').length, 0) + overlaps.length;
 
   const cards = (
@@ -86,7 +90,7 @@ export function Overview(props: Props) {
 
       {tab === 'walls' && (
         <>
-          <PlanView results={results} fmt={fmt} />
+          <PlanView results={results} project={props.project} dispatch={props.dispatch} fmt={fmt} />
           {cards}
         </>
       )}

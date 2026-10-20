@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseProjectText, projectToText } from './wallText';
-import { EXAMPLE_PROJECT, loadSaved, type Project } from './project';
+import { EXAMPLE_PROJECT, loadSaved, postCutList, type Project } from './project';
 import { resolveOpening, type WallInput } from './wall';
 
 const SAMPLE = `# Buckley-Watanabe residence
@@ -200,6 +200,31 @@ describe('interior walls, corners and intersections', () => {
   });
 });
 
+describe('freestanding posts', () => {
+  const text = `## Wall\n- length: 10-0\n\n## Posts\n- P1: 6x6 under 5 1/2 x 11 7/8 GL, at 98 7/8, 2 3/4\n- P2: (3) studs under 4x10, at 10-0, 20-0\n`;
+
+  it('reads them, sizes them to the beam, and writes them back', () => {
+    const { project, errors } = parseProjectText(text);
+    expect(errors).toEqual([]);
+    expect(project!.posts).toMatchObject([
+      { label: 'P1', type: '6x6', beam: 'gl-5.5x11.875', x: '98 7/8', y: '2 3/4' },
+      { label: 'P2', type: 'studs-3', beam: '4x10', x: '10-0', y: '20-0' },
+    ]);
+    expect(parseProjectText(projectToText(project!)).project!.posts).toEqual(project!.posts);
+    // Default height 97 1/8 less an 11 7/8 beam, standing on the subfloor; built-up posts count each stud.
+    const rows = postCutList(project!);
+    expect(rows.map((g) => [g.size, g.length, g.qty])).toEqual([
+      ['6x6', 85.25, 1],
+      ['2x6', 87.875, 3],
+    ]);
+  });
+
+  it('explains a bad one', () => {
+    const { errors } = parseProjectText(text.replace('under 4x10', 'over there'));
+    expect(errors[0]!.message).toContain('Posts are written');
+  });
+});
+
 describe('plan positions', () => {
   it('reads and writes a wall\'s plan position', () => {
     const { project, errors } = parseProjectText(`## Wall\n- length: 10-0\n- plan: 5 1/2, 34-0 9/16, running east\n`);
@@ -264,11 +289,11 @@ describe('first-floor example', () => {
     ]);
     expect(EXAMPLE_PROJECT.walls.every((w) => w.tall.length === 0)).toBe(true);
     expect(EXAMPLE_PROJECT.walls.every((w) => w.planRun !== '')).toBe(true);
-    expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'Hall')).toMatchObject({ planX: '96 1/8', planY: '273 1/8', planRun: 'south' });
-    expect(EXAMPLE_PROJECT.walls.filter((w) => w.posts.length).map((w) => w.name)).toEqual(['North · west', 'South · east', 'Hall']);
+    expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'Hall')).toMatchObject({ planX: '96 1/8', planY: '267 5/8', planRun: 'south' });
+    // B2's posts stand on their own; the walls end at them.
+    expect(EXAMPLE_PROJECT.walls.filter((w) => w.posts.length)).toEqual([]);
+    expect(EXAMPLE_PROJECT.posts.map((p) => p.label)).toEqual(['P1 north', 'D', 'E', 'P1 south']);
     expect(EXAMPLE_PROJECT.walls.filter((w) => w.beams.length).map((w) => [w.name, w.beams[0]!.span])).toEqual([
-      ['North · west', 'cross'],
-      ['South · east', 'cross'],
       ['Mudroom stub', 'full'],
       ['Hall', 'full'],
     ]);
