@@ -2,7 +2,7 @@
 
 418 Cedar St, Leavenworth. First-floor walls of the main house and its bump-out: exterior WT34/WT35 (2x6), the garage partition WT82 on grid C, and the interior walls (2x4 where the plan draws them 4 1/2" over drywall, 2x6 where it draws 6 1/2"), from the architectural set: plan A101, window and door schedules A007, levels A200 and section A302. Beams and posts from S2.2 (Harezlak Engineering, Rev. 1); other headers are 4x8 per plan note 3.
 
-Exterior walls are seen from inside. Interior walls are seen from the south or west: east-west walls run west to east, north-south walls run north to south. Interior positions come from the wall lines in A101. Beam B2 (5 1/2 x 11 7/8 GL) runs north-south on grid 2, dropped per 11/S4.2 so its top is flush with the top plates: it breaks the plates of the north and south walls, which are built in two pieces with its posts, and caps the walls under it. Walls are split where a framer would build them separately. Lengths are framing lengths: the south wall runs through the corners and the east and west walls butt into it. The house's east and west walls start 5 1/2" north of grid C, past the garage partition on C, which butts between them. The garage walls are left out for now, and so is the west wall along the stairs: the floor is open above it (S2.2) and below it (S2.1), so it is balloon framed two stories and built on its own, window 4 with it, along with the closet's north wall where it meets that stretch. Where a wall butts into another partway along, the wall it meets lists it under Intersections and gets backer studs and ladder blocking; where it butts into an end, that end gets a California corner. Verify in the field.
+Exterior walls are seen from inside. Interior walls are seen from the south or west: east-west walls run west to east, north-south walls run north to south. Interior positions come from the wall lines in A101. Beam B2 (5 1/2 x 11 7/8 GL) runs north-south on grid 2, dropped per 11/S4.2 so its top is flush with the top plates: it breaks the plates of the north and south walls, which are built in two pieces with its posts, and caps the walls under it. Walls are split where a framer would build them separately. Plan positions are measured east and north from the outside corner of the framing at the southwest (grids 1 and F), to each wall's left end on the face it is seen from. Lengths are framing lengths: the south wall runs through the corners and the east and west walls butt into it. The house's east and west walls start 5 1/2" north of grid C, past the garage partition on C, which butts between them. The garage walls are left out for now, and so is the west wall along the stairs: the floor is open above it (S2.2) and below it (S2.1), so it is balloon framed two stories and built on its own, window 4 with it, along with the closet's north wall where it meets that stretch. Where a wall butts into another partway along, the wall it meets lists it under Intersections and gets backer studs and ladder blocking; where it butts into an end, that end gets a California corner. Verify in the field.
 
 ## Defaults
 - studs: 2x6 @ 16
@@ -20,6 +20,7 @@ Exterior walls are seen from inside. Interior walls are seen from the south or w
 
 ## North · west
 - length: 8-0 1/8
+- plan: 5 1/2, 408 9/16, running east
 - exterior: no
 - sheathing: vertical, 1/2" thick, start 0, double seam studs, block seams
 
@@ -39,6 +40,7 @@ The north wall of the living space is the fire-rated garage partition WT82 (UL30
 
 ## North · east
 - length: 15-0 7/8
+- plan: 101 5/8, 408 9/16, running east
 - layout: from right
 - exterior: no
 - sheathing: vertical, 1/2" thick, start 0, double seam studs, block seams
@@ -47,6 +49,7 @@ The rest of the garage partition, from beam B2 to the east wall.
 
 ## East · kitchen
 - length: 24-5 1/2
+- plan: 282 1/2, 414 1/16, running south
 - headers: 4x8, on opening
 - california corners: left 2x6
 
@@ -57,10 +60,15 @@ Slider D's 5 1/4 x 14 LVL (B3) only fits sitting on the trimmers, which puts it 
 - D: door 12-0 x 7-8, 9-2 1/2 from left, header 5 1/4 x 14 lvl, ro 12-2 x 7-8 1/4
 
 ## East · bay, north return
-- length: 1-0 1/4
+- length: 1-5 3/4
+- plan: 282 1/2, 115 1/16, running east
+- corners: left none, right inside
+
+From the kitchen wall's inside face out to the bay; the kitchen wall stops against its north face.
 
 ## East · bay
 - length: 6-0
+- plan: 300 1/4, 120 9/16, running south
 - corners: left outside, right outside
 - california corners: left 2x6, right 2x6
 
@@ -70,14 +78,20 @@ Living room bump-out, 1'-5 3/4" deep (A101).
 - 3: window 5-0 x 5-6, centered, header 4x10
 
 ## East · bay, south return
-- length: 1-0 1/4
+- length: 1-5 3/4
+- plan: 300 1/4, 54 1/16, running west
+- corners: left inside, right none
+
+From the bay back to the living wall's inside face; the living wall stops against its south face.
 
 ## East · living
-- length: 3-6 1/2
+- length: 3-7
+- plan: 282 1/2, 48 9/16, running south
 - corners: left none, right inside
 
 ## South · east
 - length: 15-11 7/8
+- plan: 288, 5 1/2, running west
 - corners: left outside, right none
 - california corners: left 2x6
 
@@ -94,6 +108,7 @@ From the east corner to beam B2 at grid 2, which bears on a 6x6 post at the end 
 
 ## South · west
 - length: 8-0 1/8
+- plan: 96 1/8, 5 1/2, running west
 - layout: from right
 - corners: left none, right outside
 - california corners: right 2x6
@@ -105,12 +120,14 @@ From beam B2 to the west corner. Window 1 (3'-0" x 1'-0" fixed, head 8'-0") sits
 
 ## West · south
 - length: 7-0 1/2
+- plan: 5 1/2, 5 1/2, running north
 - corners: left inside, right none
 
 From the south wall to the basement stair opening (S2.1), where the floor drops out from under the bottom plate.
 
 ## West · north
-- length: 13-6 1/2
+- length: 13-7
+- plan: 5 1/2, 251, running north
 - california corners: right 2x6
 
 From window 7's king stud to the garage partition. The second-floor stair opening (S2.2) ends about here and window 7 frames right up to it, so check the break against the framing plan.
@@ -126,6 +143,7 @@ From window 7's king stud to the garage partition. The second-floor stair openin
 
 ## Mudroom stub
 - length: 2-1
+- plan: 96 1/8, 408 9/16, running south
 - studs: 2x4 @ 16
 - exterior: no
 - sheathing: none
@@ -137,6 +155,7 @@ Runs south from the north wall at grid 2, beside the refrigerator, right under b
 
 ## Bath north
 - length: 6-0 5/8
+- plan: 5 1/2, 331 15/16, running east
 - studs: 2x4 @ 16
 - exterior: no
 - sheathing: none
@@ -148,6 +167,7 @@ Between the mudroom and the bath, from the west wall to the bath's east wall.
 
 ## Bath south
 - length: 6-0 5/8
+- plan: 5 1/2, 292 7/16, running east
 - studs: 2x4 @ 16
 - exterior: no
 - sheathing: none
@@ -156,6 +176,7 @@ Between the bath and the office.
 
 ## Bath east
 - length: 6-1 7/8
+- plan: 78 1/8, 341 1/2, running south
 - studs: 2x4 @ 16
 - exterior: no
 - sheathing: none
@@ -169,12 +190,14 @@ East side of the bath and office, backing the kitchen niche. The niche's north a
 
 ## Niche north
 - length: 1-7 7/8
+- plan: 81 5/8, 338, running east
 - studs: 2x4 @ 16
 - exterior: no
 - sheathing: none
 
 ## Niche south
 - length: 1-2 1/2
+- plan: 81 5/8, 267 5/8, running east
 - studs: 2x6 @ 16
 - exterior: no
 - sheathing: none
@@ -183,6 +206,7 @@ Drawn 6 1/2" over drywall, so 2x6. It runs from the bath's east wall to the hall
 
 ## Hall
 - length: 12-2 3/4
+- plan: 96 1/8, 273 1/8, running south
 - studs: 2x6 @ 16
 - exterior: no
 - sheathing: none
@@ -206,6 +230,7 @@ The 2x6 wall on grid 2 from the kitchen niche to the closet, right under beam B2
 
 ## Closet north
 - length: 7-6 5/8
+- plan: 5 1/2, 224 5/16, running east
 - studs: 2x4 @ 16
 - exterior: no
 - sheathing: none
@@ -220,12 +245,14 @@ From the west wall to the hall wall. Pocket door J (2'-8" x 6'-8") slides east i
 
 ## Closet west
 - length: 7-8 3/8
+- plan: 46 9/16, 224 5/16, running south
 - studs: 2x4 @ 16
 - exterior: no
 - sheathing: none
 
 ## Closet south
 - length: 4-5 5/8
+- plan: 42 9/16, 126 7/16, running east
 - studs: 2x6 @ 16
 - exterior: no
 - sheathing: none
@@ -237,6 +264,7 @@ Drawn 6 1/2" over drywall, so 2x6. The stair wall butts into its west end.
 
 ## Stair wall
 - length: 3-6 1/4
+- plan: 42 9/16, 174 1/4, running south
 - studs: 2x4 @ 16
 - exterior: no
 - sheathing: none

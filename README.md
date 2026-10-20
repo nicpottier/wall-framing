@@ -43,7 +43,7 @@ The data flow is one way: **form or `.wall.md` text → `toWallSpec` → `comput
 
 ## Projects and the example
 
-A project holds several walls. The **overview** shows every wall as a card (size, openings, anything to fix, and a small drawing at a shared scale), with tabs for the project's combined **Cut list** and its **Text**. Clicking a card opens that wall's **editor** (form, dimensioned drawing, cut list and checks) at `#/wall/N`; **← All walls**, the browser's Back button, and the ‹ › arrows move between them.
+A project holds several walls. The **overview** opens with a **plan**: every wall placed to scale, north up, with its sheathing, openings, posts and beams, linking to its editor, and any two walls whose framing shares floor flagged in red. Below it, the overview shows every wall as a card (size, openings, anything to fix, and a small drawing at a shared scale), with tabs for the project's combined **Cut list** and its **Text**. Clicking a card opens that wall's **editor** (form, dimensioned drawing, cut list and checks) at `#/wall/N`; **← All walls**, the browser's Back button, and the ‹ › arrows move between them.
 
 The example (**Load example**) is the first floor of the Buckley-Watanabe residence, written as [`src/state/examples/first-floor.wall.md`](src/state/examples/first-floor.wall.md): the main house's walls, exterior and interior, and the living-room bump-out, split where a framer would build them separately (the garage walls and the balloon-framed west wall along the stairs are left out) from the architectural plans (A101, A007, A200, A302), with beams and posts from the structural plans (S2.2). Its notes record the assumptions made reading the plans.
 
@@ -88,6 +88,7 @@ The overview's **Text** tab edits the whole project as plain text, kept in sync 
 - Settings: `length`, `height`, `studs`, `layout`, `top plate`, `exterior`, `headers`, `head height`, `rough sill`, `window ro`, `door ro`, `sheathing`, `corners`.
 - Openings: `<label>: <window|door> <W x H or callout>, <position>`, then any of `head`, `sill`, `header`, `jacks`, `ro W x H`.
 - Posts (under `### Posts`): `<label>: <6x6|4x6|4x4|(2) studs|(3) studs|(4) studs>, <position to centerline>`.
+- Plan position: `plan: <x>, <y>, running <east|west|north|south>`, the wall's left end on the face it is seen from, measured east and north from the plan origin, and the way it runs to its right end. Its depth goes away from the viewer, so an exterior wall seen from inside runs with its outside face away. Walls without one are listed as not on the plan.
 - Beams (under `### Beams`): `<label>: <size>, <where>`, where is `X from left|right` for a beam crossing the wall (to its centerline), `X to Y from left|right` along a stretch, or `full length`.
 - Intersections (under `### Intersections`): `<label>: <2x4|2x6> wall, <position to its centerline>`, for a wall butting in partway along.
 - Interior walls: `studs: 2x4 @ 16`, `exterior: no`, `sheathing: none`. California corners: `california corners: left 2x6, right 2x4` (the size of the wall butting into each end), `both` or `none`.
@@ -145,7 +146,7 @@ Beams are dropped (11/S4.2): the top is flush with the top of the top plates and
 
 ## Ideas for next steps
 
-- A floor plan placing every wall, so intersections and corners are found automatically
+- Find intersections and corners from the plan automatically, and flag gaps between walls that should meet
 - Fire blocking, mid-height blocking, and sheathing layout overlay
 - Multiple walls per project with a combined lumber order (stock-length optimization)
 - Built-up stud counts from the structural plans' diamonds, stud wall type A (1¾×5½ LSL @ 12")

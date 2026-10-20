@@ -103,7 +103,7 @@ function makeView(
   };
 }
 
-function useWidth<E extends HTMLElement>() {
+export function useWidth<E extends HTMLElement>() {
   const ref = useRef<E>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {

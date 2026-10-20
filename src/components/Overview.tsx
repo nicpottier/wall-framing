@@ -4,6 +4,7 @@ import type { WallInput } from '../state/wall';
 import type { TextError } from '../state/wallText';
 import { wallHref } from '../useRoute';
 import { Segmented } from './controls';
+import { PlanView, usePlan } from './PlanView';
 import { Checks, CutList } from './Report';
 import { TextEditor } from './TextEditor';
 import { WallCard } from './WallCard';
@@ -47,7 +48,8 @@ export function Overview(props: Props) {
     height: Math.max(48, ...framed.map((f) => f.maxHeight)),
     maxHeight: CARD_MAX_HEIGHT,
   };
-  const problems = results.reduce((n, r) => n + r.issues.filter((i) => i.level === 'error').length, 0);
+  const { overlaps } = usePlan(results);
+  const problems = results.reduce((n, r) => n + r.issues.filter((i) => i.level === 'error').length, 0) + overlaps.length;
 
   const cards = (
     <div className="wall-grid">
@@ -82,7 +84,12 @@ export function Overview(props: Props) {
         />
       </div>
 
-      {tab === 'walls' && cards}
+      {tab === 'walls' && (
+        <>
+          <PlanView results={results} fmt={fmt} />
+          {cards}
+        </>
+      )}
 
       {tab === 'cuts' && (
         <div className="lower">

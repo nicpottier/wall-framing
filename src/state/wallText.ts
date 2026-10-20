@@ -267,7 +267,7 @@ export function parseProjectText(text: string): ParseResult {
         notesTarget = projectNotes;
       } else {
         const draft: WallDraft = {
-          wall: { ...defaults, id: `w${walls.length + 1}`, name, length: '', notes: '', openings: [], posts: [], tall: [], intersections: [], beams: [] },
+          wall: { ...defaults, id: `w${walls.length + 1}`, name, length: '', notes: '', planX: '', planY: '', planRun: '', openings: [], posts: [], tall: [], intersections: [], beams: [] },
           line,
           hasLength: false,
           pending: [],
@@ -317,6 +317,15 @@ export function parseProjectText(text: string): ParseResult {
       if (!kv) return err(line, `Settings are written "key: value". Got "${item}".`);
       const key = words(kv[1]!);
       const value = kv[2]!.trim();
+      if (key === 'plan') {
+        if (section !== 'wall') return err(line, 'plan belongs to a wall, not the defaults.');
+        const pm = value.match(/^(.+?)\s*,\s*(.+?)\s*,\s*running\s+(east|west|north|south)$/i);
+        if (!pm || !isLen(lengthText(pm[1]!)) || !isLen(lengthText(pm[2]!))) {
+          return err(line, `plan is written "x, y, running east": the wall's left end on its seen face, east and north of the plan origin. Got "${value}".`);
+        }
+        Object.assign(current().wall, { planX: lengthText(pm[1]!), planY: lengthText(pm[2]!), planRun: pm[3]!.toLowerCase() });
+        return;
+      }
       if (key === 'length') {
         if (section !== 'wall') return err(line, 'length belongs to a wall, not the defaults.');
         if (!isLen(lengthText(value))) return err(line, `length must be a length, like 20-0 or 240. Got "${value}".`);
@@ -325,7 +334,7 @@ export function parseProjectText(text: string): ParseResult {
         return;
       }
       const parse = SETTINGS[key];
-      if (!parse) return err(line, `Unknown setting "${kv[1]!.trim()}". Settings are: length, ${Object.keys(SETTINGS).filter((k) => k !== 'spacing').join(', ')}.`);
+      if (!parse) return err(line, `Unknown setting "${kv[1]!.trim()}". Settings are: length, plan, ${Object.keys(SETTINGS).filter((k) => k !== 'spacing').join(', ')}.`);
       const out = parse(value);
       if (typeof out === 'string') return err(line, out.charAt(0).toUpperCase() + out.slice(1) + '.');
       Object.assign(section === 'defaults' ? defaults : current().wall, out);
@@ -572,6 +581,7 @@ export function projectToText(project: Project): string {
 
   for (const wall of project.walls) {
     out.push('', `## ${wall.name || 'Wall'}`, `- length: ${wall.length}`);
+    if (wall.planRun) out.push(`- plan: ${wall.planX}, ${wall.planY}, running ${wall.planRun}`);
     for (const [key, format] of FORMAT) {
       const value = format(wall);
       if (value !== format(project.defaults)) out.push(`- ${key}: ${value}`);

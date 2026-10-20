@@ -1542,3 +1542,112 @@ tfoot td {
     transition: none !important;
   }
 }
+
+/* Plan view */
+.plan-card {
+  margin: 0;
+  background: var(--sheet);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.plan-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 12px 16px 0;
+}
+.plan-head h2 {
+  margin: 0;
+  font: 600 16px var(--f-cond);
+}
+.plan-head .sub {
+  font: 500 12px var(--f-mono);
+  color: var(--muted);
+}
+.plan-empty {
+  padding: 12px 16px 16px;
+}
+.plan-frame {
+  fill: var(--w-stud);
+  stroke: var(--w-edge);
+  stroke-width: 0.8;
+}
+.plan-wall.exterior .plan-frame {
+  fill: var(--w-king);
+}
+.plan-sheath {
+  fill: color-mix(in srgb, var(--sheath) 35%, transparent);
+  stroke: none;
+}
+.plan-wall {
+  cursor: pointer;
+}
+.plan-wall.err .plan-frame {
+  stroke: var(--err);
+  stroke-width: 1.4;
+}
+.plan-wall:hover .plan-frame,
+.plan-wall:focus-visible .plan-frame,
+.plan-wall.hot .plan-frame {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+svg.plan.focus .plan-wall:not(.hot) {
+  opacity: 0.45;
+}
+.plan-ro {
+  fill: var(--sheet);
+  stroke: none;
+}
+.plan-op {
+  stroke: var(--win);
+  stroke-width: 2.2;
+}
+.plan-op.door {
+  stroke: var(--door);
+}
+.plan-post {
+  fill: var(--w-post);
+  stroke: var(--w-edge);
+  stroke-width: 0.8;
+}
+.plan-beam {
+  fill: none;
+  stroke: var(--w-post);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 2;
+}
+.plan-overlap {
+  fill: color-mix(in srgb, var(--err) 30%, transparent);
+  stroke: var(--err);
+  stroke-width: 1.5;
+}
+.plan-t {
+  font: 600 10px var(--f-cond);
+  letter-spacing: 0.04em;
+  fill: var(--ink);
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--sheet);
+  stroke-width: 3px;
+}
+.plan-north path {
+  fill: var(--ink);
+}
+.plan-north text {
+  font: 700 11px var(--f-cond);
+  fill: var(--ink);
+}
+.plan-notes {
+  margin: 0;
+  padding: 8px 16px 12px 32px;
+  font-size: 13px;
+}
+.plan-notes .error {
+  color: var(--err);
+}
+.plan-notes .note {
+  color: var(--muted);
+}

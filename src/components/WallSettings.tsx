@@ -65,6 +65,22 @@ export function WallSettings({ wall, dispatch }: Props) {
         <Segmented label="Layout from" value={wall.layoutFrom} options={[['left', 'Left'], ['right', 'Right']]} onChange={set('layoutFrom')} />
         <Segmented label="Top plate" value={wall.topPlates} options={[['1', 'Single'], ['2', 'Double']]} onChange={set('topPlates')} />
         <Segmented label="Exterior wall" value={wall.exterior} options={[['yes', 'Yes'], ['no', 'No']]} onChange={set('exterior')} />
+        <p className="field-group full">Plan position</p>
+        <Field label="Left end, east" hint="From the plan origin">
+          {(id) => <LengthInput id={id} value={wall.planX} onChange={set('planX')} optional placeholder="—" />}
+        </Field>
+        <Field label="Left end, north">{(id) => <LengthInput id={id} value={wall.planY} onChange={set('planY')} optional placeholder="—" />}</Field>
+        <Field label="Runs" full hint="Left end to right end, as you face it. Its depth goes away from you.">
+          {(id) => (
+            <select id={id} value={wall.planRun} onChange={(e) => set('planRun')(e.target.value)}>
+              <option value="">Not on the plan</option>
+              <option value="east">East (seen from the south)</option>
+              <option value="west">West (seen from the north)</option>
+              <option value="north">North (seen from the east)</option>
+              <option value="south">South (seen from the west)</option>
+            </select>
+          )}
+        </Field>
         <Field label="Notes" full>
           {(id) => (
             <textarea id={id} className="notes" rows={2} value={wall.notes} placeholder="Anything the crew should know" onChange={(e) => set('notes')(e.target.value)} />

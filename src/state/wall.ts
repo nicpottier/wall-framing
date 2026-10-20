@@ -1,9 +1,11 @@
 import { DEPTH, TYPICAL_HEADER, headerName, headerType, isHeaderTypeId, isPostTypeId, postType, type HeaderTypeId, type LumberSize, type PostTypeId } from '../lib/lumber';
+import type { PlanRun } from '../lib/plan';
 import type { BeamSpec, IntersectionSpec, Issue, LayoutFrom, OpeningSpec, OpeningType, PostSpec, TallSpec, WallSpec } from '../lib/framing';
 import type { CornerType, PanelOrientation } from '../lib/sheathing';
 import { parseLength, toFraction } from '../lib/units';
 
 export type WallEnd = 'left' | 'right';
+export type { PlanRun } from '../lib/plan';
 
 /** What the user typed. Length fields stay as text until parsed so "92 5/8" or "4-6" can be entered naturally. */
 export interface OpeningInput {
@@ -110,6 +112,13 @@ export interface WallInput extends WallSettings {
   length: string;
   /** Free text kept with the wall; doesn't affect framing. */
   notes: string;
+  /**
+   * Where the wall sits on the floor plan: its left end, on the face it is seen from, measured east (x)
+   * and north (y) from the plan origin, and the direction it runs. Blank leaves it off the plan.
+   */
+  planX: string;
+  planY: string;
+  planRun: '' | PlanRun;
   openings: OpeningInput[];
   posts: PostInput[];
   tall: TallInput[];
@@ -117,7 +126,7 @@ export interface WallInput extends WallSettings {
   beams: BeamInput[];
 }
 
-export type WallSettingKey = keyof WallSettings | 'name' | 'length' | 'notes';
+export type WallSettingKey = keyof WallSettings | 'name' | 'length' | 'notes' | 'planX' | 'planY' | 'planRun';
 
 export const DEFAULT_SETTINGS: WallSettings = {
   height: '97 1/8',
@@ -152,6 +161,9 @@ export const EXAMPLE_WALL: WallInput = {
   name: 'Wall A, south elevation',
   length: '20-0',
   notes: '',
+  planX: '',
+  planY: '',
+  planRun: '',
   openings: [
     { id: 'o1', type: 'window', label: 'W1', from: 'left', offset: '4-6', width: '3-9', height: '3-7 1/2', ro: '', headHeight: '', header: 'auto', jacksPerSide: 'auto' },
     { id: 'o2', type: 'door', label: 'D1', from: 'right', offset: '5-9', width: '3-0', height: '6-8', ro: '', headHeight: '', header: 'auto', jacksPerSide: 'auto' },
@@ -404,6 +416,22 @@ export function resolveBeam(b: BeamInput, wall: WallInput): { x0: number; x1: nu
   if (!isLength(a) || !isLength(c)) return `${tag}: enter valid positions for both ends.`;
   const [x0, x1] = flip(Math.min(a, c), Math.max(a, c));
   return { x0, x1 };
+}
+
+export interface Placement {
+  /** Plan position of the left end, on the face the wall is seen from. */
+  x: number;
+  y: number;
+  run: PlanRun;
+}
+
+/** The wall's plan position, null when it has none, or a message when it can't be read. */
+export function resolvePlacement(wall: WallInput): Placement | null | string {
+  if (!wall.planRun) return null;
+  const x = parseLength(wall.planX);
+  const y = parseLength(wall.planY);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return `${wall.name || 'Wall'}: enter a plan position for its left end.`;
+  return { x, y, run: wall.planRun };
 }
 
 /** Wall's left end to an intersecting wall's centerline, or a message. */

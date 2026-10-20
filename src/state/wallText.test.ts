@@ -200,6 +200,20 @@ describe('interior walls, corners and intersections', () => {
   });
 });
 
+describe('plan positions', () => {
+  it('reads and writes a wall\'s plan position', () => {
+    const { project, errors } = parseProjectText(`## Wall\n- length: 10-0\n- plan: 5 1/2, 34-0 9/16, running east\n`);
+    expect(errors).toEqual([]);
+    expect(project!.walls[0]).toMatchObject({ planX: '5 1/2', planY: '34-0 9/16', planRun: 'east' });
+    expect(parseProjectText(projectToText(project!)).project!.walls).toEqual(project!.walls);
+  });
+
+  it('explains a bad one', () => {
+    const { errors } = parseProjectText(`## Wall\n- length: 10-0\n- plan: somewhere\n`);
+    expect(errors[0]!.message).toContain('running east');
+  });
+});
+
 describe('beams', () => {
   const text = `## Wall
 - length: 20-0
@@ -249,6 +263,8 @@ describe('first-floor example', () => {
       'Stair wall',
     ]);
     expect(EXAMPLE_PROJECT.walls.every((w) => w.tall.length === 0)).toBe(true);
+    expect(EXAMPLE_PROJECT.walls.every((w) => w.planRun !== '')).toBe(true);
+    expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'Hall')).toMatchObject({ planX: '96 1/8', planY: '273 1/8', planRun: 'south' });
     expect(EXAMPLE_PROJECT.walls.filter((w) => w.posts.length).map((w) => w.name)).toEqual(['North · west', 'South · east', 'Hall']);
     expect(EXAMPLE_PROJECT.walls.filter((w) => w.beams.length).map((w) => [w.name, w.beams[0]!.span])).toEqual([
       ['North · west', 'cross'],
