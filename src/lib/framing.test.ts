@@ -456,17 +456,27 @@ describe('2x4 and unsheathed walls', () => {
 });
 
 describe('california corners', () => {
-  it('lays a stud flat just past the wall butting in', () => {
+  it('lays a stud flat against the end stud, reaching past the wall butting in', () => {
     const f = frame(wall({ california: { left: 5.5, right: 0 } }));
     const [b, ...rest] = of(f, 'cornerBacker');
     expect(rest).toHaveLength(0);
-    expect(b).toMatchObject({ x: 5.5, w: 5.5, length: f.studLength });
+    // End stud 0 to 1 1/2, flat 2x6 1 1/2 to 7: 1 1/2" past the corner at 5 1/2.
+    expect(b).toMatchObject({ x: 1.5, w: 5.5, length: f.studLength });
+  });
+
+  it('moves along only when the wall is too shallow to reach past the corner', () => {
+    // A flat 2x4 against the end stud would stop at 5", short of a 2x6 wall butting in at 5 1/2".
+    const f = frame(wall({ studs: '2x4', california: { left: 5.5, right: 3.5 } }));
+    expect(of(f, 'cornerBacker').map((m) => [m.x, m.w])).toEqual([
+      [3.5, 3.5],
+      [240 - 5, 3.5],
+    ]);
   });
 
   it('works from the right end and moves layout studs out of the way', () => {
     const f = frame(wall({ california: { left: 0, right: 5.5 } }));
-    expect(of(f, 'cornerBacker')[0]).toMatchObject({ x: 240 - 11, w: 5.5 });
-    expect(of(f, 'stud').some((m) => m.x + m.w > 229 && m.x < 234.5)).toBe(false);
+    expect(of(f, 'cornerBacker')[0]).toMatchObject({ x: 240 - 7, w: 5.5 });
+    expect(of(f, 'stud').some((m) => !m.isEnd && m.x + m.w > 233 && m.x < 238.5)).toBe(false);
   });
 
   it('skips the backer where a king already backs the corner', () => {
@@ -475,8 +485,9 @@ describe('california corners', () => {
   });
 
   it('uses a single stud when an opening leaves no room to lay one flat', () => {
-    const f = frame(wall({ california: { left: 5.5, right: 0 }, openings: [opening({ x: 10 })] }));
-    expect(of(f, 'cornerBacker')[0]).toMatchObject({ x: 5.5, w: 1.5 });
+    // A 2x4 butting in puts the corner at 3 1/2; W1's king at 5 1/2 blocks the flat stud but not a single one.
+    const f = frame(wall({ california: { left: 3.5, right: 0 }, openings: [opening({ x: 8.5 })] }));
+    expect(of(f, 'cornerBacker')[0]).toMatchObject({ x: 3.5, w: 1.5 });
   });
 
   it('falls back to a note when an opening leaves no room at all', () => {

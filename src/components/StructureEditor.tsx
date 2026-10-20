@@ -53,7 +53,7 @@ export function StructureEditor({ wall, errorIds, fmt, dispatch }: Props) {
         <p className="field-group full">California corners</p>
         {cornerField('californiaLeft', 'Left end')}
         {cornerField('californiaRight', 'Right end')}
-        <p className="field-note full">Where a wall butts into an end of this one, a stud laid flat just past it backs the drywall in the inside corner.</p>
+        <p className="field-note full">Where a wall butts into an end of this one, a stud laid flat against the end stud reaches past it to back the drywall in the inside corner.</p>
       </div>
       <div className="ops">
         <div className="btn-row">

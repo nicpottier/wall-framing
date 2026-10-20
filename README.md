@@ -141,7 +141,7 @@ Beams are dropped (11/S4.2): the top is flush with the top of the top plates and
 ### Intersections and corners
 
 - **Intersections**: where a wall butts into another partway along, the wall it meets gets a backer stud each side (3/4" of drywall nailing past each face) with 2x4 ladder blocking on the flat every 24" between. Kings, jacks, posts or end studs already there serve as backers; common layout studs in the way are moved. A wall meeting inside a rough opening is flagged.
-- **California corners**: at an end where another wall butts in, a stud laid flat at the inside face, just past that wall, backs the drywall in the inside corner. Skipped where a king, jack or post already backs it; a single stud is used when an opening leaves no room to lay one flat, and a note suggests drywall clips when there's no room at all.
+- **California corners**: at an end where another wall butts in, a stud laid flat at the inside face, nailed against the end stud so the two make an L, reaches past that wall to back the drywall in the inside corner and catch the butting wall's end stud. In a wall too shallow to reach past the corner that way, it moves along just far enough. Skipped where a king, jack or post already backs it; a single stud is used when an opening leaves no room to lay one flat, and a note suggests drywall clips when there's no room at all.
 - **2x4 walls and unsheathed walls**: stud size is per wall, and interior walls can have no sheathing (no seams, seam studs or seam blocking).
 
 ## Ideas for next steps

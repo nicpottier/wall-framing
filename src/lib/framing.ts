@@ -878,9 +878,11 @@ function placeStepBlocking(steps: PlateStep[], sections: WallSection[], members:
 
 /**
  * California corners: where another wall butts into an end of this one, a stud laid flat at the inside
- * face just past it gives the drywall something to land on in the inside corner. Skipped where framing
- * is already there (a king, jack or post), and swapped for a single stud, or a note to use drywall clips,
- * when an opening leaves no room for it.
+ * face, nailed against the end stud so the two make an L, runs past the inside corner so the drywall has
+ * something to land on there and the butting wall's end stud nails to it. It moves along only when this
+ * wall is too shallow for it to reach past the corner. Skipped where framing is already there (a king,
+ * jack or post), and swapped for a single stud, or a note to use drywall clips, when an opening leaves
+ * no room for it.
  */
 function placeCornerBackers(wall: WallSpec, sectionOf: (x: number, w?: number) => WallSection, members: Member[], add: AddMember, issue: AddIssue) {
   const L = wall.length;
@@ -895,8 +897,11 @@ function placeCornerBackers(wall: WallSpec, sectionOf: (x: number, w?: number) =
     if (backed >= DRYWALL_BACKING * 0.6) continue;
     const blocked = (a: number, b: number) =>
       a < -EPS || b > L + EPS || members.some((m) => m.role !== 'plate' && m.role !== 'topPlate' && m.layoutCenter == null && overlapsX(m, a, b));
-    const fits = (w: number): [number, number] => (side === 'left' ? [corner, corner + w] : [corner - w, corner]);
-    const piece = [face, T].map(fits).find(([a, b]) => !blocked(a, b));
+    // Flush against the end stud, reaching at least a stud's thickness past the corner.
+    const start = Math.max(T, d + T - face);
+    const flat: [number, number] = side === 'left' ? [start, start + face] : [L - start - face, L - start];
+    const single: [number, number] = side === 'left' ? [corner, corner + T] : [corner - T, corner];
+    const piece = [flat, single].find(([a, b]) => !blocked(a, b));
     if (!piece) {
       issue('note', `No room for a California corner at the ${side} end; use drywall clips in that corner.`);
       continue;
@@ -1156,7 +1161,7 @@ function buildCutList(
       g.notes.push(wall.sheathing.seamStuds === 'double' ? 'Pairs straddle vertical sheathing seams' : 'Centered under vertical sheathing seams');
     }
     if (g.role === 'blocking' && !g.notes.length) g.notes.push('2x4 on the flat, centered on horizontal sheathing seams');
-    if (g.role === 'cornerBacker') g.notes.push(members.some((m) => m.group === g.key && m.w > T) ? 'Laid flat at the inside face, just past the wall butting in' : 'Just past the wall butting in, for drywall');
+    if (g.role === 'cornerBacker') g.notes.push(members.some((m) => m.group === g.key && m.w > T) ? 'Laid flat against the end stud at the inside face, past the wall butting in' : 'Just past the wall butting in, for drywall');
     if (g.role === 'partitionStud') {
       const labels = intersections.filter((i) => i.bay && !i.hasError).map((i) => i.spec.label);
       g.notes.push(`Each side of ${labels.join(', ') || 'an intersecting wall'}`);
