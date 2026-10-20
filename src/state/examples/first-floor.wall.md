@@ -24,11 +24,11 @@ Exterior walls are seen from inside. Interior walls are seen from the south or w
 - headers: 4x8, on opening
 - california corners: left 2x6
 
-Slider D's 5 1/4 x 14 LVL (B3) only fits sitting on the trimmers, which puts it tight to the top plate. The plan shows 7" between window 4 and the slider frame, so their framing shares studs.
+Slider D's 5 1/4 x 14 LVL (B3) only fits sitting on the trimmers, which puts it tight to the top plate. It bears on 6x6 posts each side, over the P1 posts in the basement (S2.1). The plan leaves 5 5/8" between window 4 and the slider, room for exactly one post, so that post carries both headers.
 
 ### Openings
 - 4: window 2-0 x 4-0, 1-7 1/2 from left
-- D: door 12-0 x 7-8, 9-2 1/2 from left, header 5 1/4 x 14 lvl, ro 12-2 x 7-8 1/4
+- D: door 12-0 x 7-8, 9-2 1/2 from left, header 5 1/4 x 14 lvl, ro 12-2 x 7-8 1/4, posts 6x6
 
 ## East · bay, north return
 - length: 1-5 3/4

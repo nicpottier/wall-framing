@@ -15,7 +15,7 @@ const EXAMPLE_LINES = [
   ['- length: 20-0', 'Settings: length, height, studs, layout, top plate, exterior, headers, head height, rough sill, window ro, door ro, sheathing, corners'],
   ['- W1: window 3-0 x 4-6, 4-6 from left', 'Positions are to the centerline: "from left", "from right", "after W1", or "centered"'],
   ['- D1: door 3068, 5-9 from right', 'Four-digit callouts give feet and inches of width then height'],
-  ['  …, head 7-0, header 4x10, jacks 2', 'Optional: head or sill, header, jacks, ro W x H'],
+  ['  …, head 7-0, header 4x10, jacks 2', 'Optional: head or sill, header, jacks (or posts 6x6 to carry the header), ro W x H'],
   ['- window ro: 3/8 sides, 3/8 top, 1 1/2 bottom', 'Window rough opening past the unit; doors: door ro: +2 x +2 1/2'],
   ['- P1: 6x6, 8-0 from right', 'Under ### Posts: 6x6, 4x6, 4x4 or (2)–(4) studs, to the centerline'],
   ['- Stair: 10-1 7/8 tall, 12-6 to 24-1 from left', 'Under ### Balloon framing: a stretch framed to its own height, with plate steps at its ends'],

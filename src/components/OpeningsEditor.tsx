@@ -1,6 +1,6 @@
 import { useId, type Dispatch } from 'react';
 import type { OpeningType } from '../lib/framing';
-import { HEADER_TYPES, TYPICAL_HEADER, headerName, headerType } from '../lib/lumber';
+import { HEADER_TYPES, POST_TYPES, TYPICAL_HEADER, headerName, headerType, isPostTypeId } from '../lib/lumber';
 import type { Formatter } from '../lib/units';
 import { parseSize, resolveOpening, roughOpening, type OpeningInput, type WallAction, type WallInput, type WallSettingKey } from '../state/wall';
 import { Chevron, Field, LengthInput, Panel, Segmented } from './controls';
@@ -167,12 +167,17 @@ function OpeningCard({ opening: o, wall, hasError, fmt, dispatch }: CardProps) {
             </select>
           )}
         </Field>
-        <Field label="Jacks / side">
+        <Field label="Each side" hint={isPostTypeId(o.jacksPerSide) ? 'A post carries the header' : undefined}>
           {(id) => (
             <select id={id} value={o.jacksPerSide} onChange={(e) => patch({ jacksPerSide: e.target.value as OpeningInput['jacksPerSide'] })}>
-              <option value="auto">Auto</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
+              <option value="auto">Jacks, auto</option>
+              <option value="1">1 jack</option>
+              <option value="2">2 jacks</option>
+              {POST_TYPES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label} post
+                </option>
+              ))}
             </select>
           )}
         </Field>

@@ -129,6 +129,7 @@ Left and right are always as seen **from inside** the building. Enter opening po
 - **Under plate** (default, 10/S4.1): the header sits tight under the top plates. A flat head plate defines the top of the rough opening, doubled at exterior openings over 8'-0", with cripples (2" or more) or a ripped filler between it and the header. If a deep header only fits by rising into the double top plate, the lower plate is cut and an MSTA24 strap is noted.
 - **On opening**: the header sits on the jacks at the top of the rough opening, with cripples or filler up to the plates.
 - **Trimmers**: (2) per side at headers over 6'-0" long, otherwise (1) (10/S4.1). Exterior headers over 6'-0" get A35 clips.
+- **Posts at openings**: an opening can carry its header on a post each side instead of jacks (`posts 6x6` on its line, or the "Each side" picker), with kings outside them. Where two openings are just a post's width apart (up to 1/2" more), one post between them carries both headers, each bearing on half of it; it stops under the lower header and the other is noted to be blocked up.
 
 ### Posts and balloon framing
 

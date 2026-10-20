@@ -582,3 +582,43 @@ describe('beams', () => {
     expect(f.issues.some((i) => i.message.includes('caps this wall'))).toBe(true);
   });
 });
+
+describe('posts at openings', () => {
+  const slider = (over: Partial<OpeningSpec> = {}) =>
+    opening({ id: 'd', label: 'D', type: 'door', x: 60, width: 146, height: 82.5, sill: 0, trimmerPost: '6x6', ...over });
+
+  it('carry the header in place of jacks, with kings outside', () => {
+    const f = frame(wall({ openings: [slider()] }));
+    expect(of(f, 'jack')).toHaveLength(0);
+    expect(of(f, 'post').map((m) => [m.x, m.w])).toEqual([
+      [54.5, 5.5],
+      [206, 5.5],
+    ]);
+    expect(xs(f, 'king')).toEqual([53, 211.5]);
+    const header = of(f, 'header')[0]!;
+    expect([header.x, header.w]).toEqual([54.5, 157]);
+    expect(of(f, 'post')[0]!.length).toBeCloseTo(header.z - 1.5);
+    expect(f.cutList.find((g) => g.role === 'post')!.notes).toContain('Carry the header at D');
+  });
+
+  it('share one post with an opening just a post width away', () => {
+    // W1 RO ends at 54 3/8; D's starts 5 5/8 later, room for one 6x6.
+    const w1 = opening({ x: 30, width: 24.375, height: 49.875, sill: 42.125 });
+    const f = frame(
+      wall({ height: 109.25, headerMount: 'onJacks', openings: [w1, slider({ height: 92.25, header: 'lvl-5.25x14' })] }),
+    );
+    expect(f.issues.filter((i) => i.level === 'error')).toEqual([]);
+    const posts = of(f, 'post');
+    expect(posts.map((m) => m.x)).toEqual([206, 54.5]);
+    // Each header bears on half the shared post.
+    const [hw, hd] = of(f, 'header').sort((a, b) => a.x - b.x);
+    expect(hw!.x + hw!.w).toBeCloseTo(57.25);
+    expect(hd!.x).toBeCloseTo(57.25);
+    // No king or jack between them.
+    expect(of(f, 'king').some((m) => m.x > 50 && m.x < 62)).toBe(false);
+    expect(of(f, 'jack').some((m) => m.x > 50)).toBe(false);
+    // The post stops under W1's header at 92; D's sits 1/4" higher and is blocked up.
+    expect(posts[1]!.length).toBeCloseTo(92 - 1.5);
+    expect(f.issues.some((i) => i.message.startsWith("W1 and D share a 6x6 post, each header bearing on half of it; D's header sits 1/4\" higher"))).toBe(true);
+  });
+});

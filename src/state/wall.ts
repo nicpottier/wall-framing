@@ -24,7 +24,8 @@ export interface OpeningInput {
   /** Windows only. Blank uses the wall's window head height. */
   headHeight: string;
   header: HeaderTypeId | 'auto';
-  jacksPerSide: 'auto' | '1' | '2';
+  /** Jack studs each side, or a post size to carry the header instead. */
+  jacksPerSide: 'auto' | '1' | '2' | PostTypeId;
 }
 
 /** A post in the wall, positioned to its centerline like an opening. */
@@ -539,7 +540,8 @@ export function toWallSpec(input: WallInput): ParsedWall {
       height: r.roHeight,
       sill: r.sill,
       header: isHeaderTypeId(o.header) ? o.header : 'auto',
-      jacksPerSide: o.jacksPerSide === 'auto' ? 'auto' : (Number(o.jacksPerSide) as 1 | 2),
+      jacksPerSide: o.jacksPerSide === '1' || o.jacksPerSide === '2' ? (Number(o.jacksPerSide) as 1 | 2) : 'auto',
+      trimmerPost: isPostTypeId(o.jacksPerSide) ? o.jacksPerSide : undefined,
       unit: r.unitWidth > 0 && r.unitHeight > 0 ? { width: r.unitWidth, height: r.unitHeight, bottom: r.unitBottom } : undefined,
     });
   }

@@ -448,6 +448,10 @@ function parseOpening(item: string, line: number, draft: WallDraft, err: (line: 
       }
     } else if ((k = w.match(/^jacks (1|2|auto)$/))) {
       opening.jacksPerSide = k[1] as OpeningInput['jacksPerSide'];
+    } else if ((k = c.match(/^posts?\s+(.+)$/i))) {
+      const p = findPost(k[1]!);
+      if (!p) return err(line, `${tag} unknown post "${k[1]}". Use one of: ${POST_TYPES.map((t) => t.label).join(', ')}.`);
+      opening.jacksPerSide = p;
     } else if ((k = c.match(/^ro\s+(.+)$/i))) {
       if (!parseSize(k[1]!)) return err(line, `${tag} write the rough opening as width x height, like 48 x 46 1/2.`);
       opening.ro = k[1]!.trim();
@@ -659,7 +663,8 @@ function openingText(o: OpeningInput): string {
   const parts = [`${o.label}: ${o.type} ${o.width} x ${o.height}`, `${o.offset} from ${o.from}`];
   if (o.type === 'window' && o.headHeight.trim()) parts.push(`head ${o.headHeight}`);
   if (o.header !== 'auto') parts.push(`header ${headerName(headerType(o.header))}`);
-  if (o.jacksPerSide !== 'auto') parts.push(`jacks ${o.jacksPerSide}`);
+  if (o.jacksPerSide === '1' || o.jacksPerSide === '2') parts.push(`jacks ${o.jacksPerSide}`);
+  else if (o.jacksPerSide !== 'auto') parts.push(`posts ${postType(o.jacksPerSide).label}`);
   if (o.ro.trim()) parts.push(`ro ${o.ro.trim()}`);
   return parts.join(', ');
 }

@@ -299,6 +299,8 @@ describe('first-floor example', () => {
     ]);
     expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'South · east')).toMatchObject({ length: '15-0 7/8', cornerLeft: 'inside', californiaLeft: 'none' });
     expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'West · south')).toMatchObject({ cornerLeft: 'outside', californiaLeft: '2x6' });
+    const kitchen = EXAMPLE_PROJECT.walls.find((w) => w.name === 'East · kitchen')!;
+    expect(kitchen.openings.find((o) => o.label === 'D')).toMatchObject({ jacksPerSide: '6x6' });
     expect(EXAMPLE_PROJECT.walls.every((w) => w.tall.length === 0)).toBe(true);
     expect(EXAMPLE_PROJECT.walls.every((w) => w.planRun !== '')).toBe(true);
     expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'Hall')).toMatchObject({ planX: '96 1/8', planY: '267 5/8', planRun: 'south' });

@@ -400,6 +400,8 @@ function OpeningOverlay({ o, framing, fmt, v, compact }: OverlayProps) {
   const tops = ownMembers.filter((m) => m.role === 'crippleTop');
   const bottoms = ownMembers.filter((m) => m.role === 'crippleBottom');
   const hasFill = ownMembers.some((m) => m.role === 'filler');
+  // What carries the header on the left: its jacks or post (a post shared with the next opening may be shorter).
+  const trimmer = ownMembers.find((m) => (m.role === 'jack' || m.role === 'post') && m.x < spec.x)?.h ?? o.headerBottom - T;
   const sillBottom = o.roBottom - framing.wall.sillPlies * T;
 
   return (
@@ -438,7 +440,7 @@ function OpeningOverlay({ o, framing, fmt, v, compact }: OverlayProps) {
           {/* inside the opening, just under the header */}
           <HDim x1={xl} x2={xr} y={yTop + 16 * bt} label={fmt(spec.width)} />
           <VDim x={xr - 11 * sx} y1={yTop} y2={yBot} label={`RO ${fmt(spec.height)}`} side={v.side('left')} />
-          <VDim x={xl + 11 * sx} y1={Y(o.headerBottom)} y2={Y(T)} label={`JACK ${fmt(o.headerBottom - T)}`} side={v.side('right')} />
+          <VDim x={xl + 11 * sx} y1={Y(T + trimmer)} y2={Y(T)} label={`${spec.trimmerPost ? 'POST' : 'JACK'} ${fmt(trimmer)}`} side={v.side('right')} />
           {spec.type === 'window' && (
             <VDim x={xr - 11 * sx} y1={yBot} y2={Y(0)} label={`SILL ${fmt(spec.sill)}`} side={v.side('left')} />
           )}

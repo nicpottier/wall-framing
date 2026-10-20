@@ -33,6 +33,8 @@ export interface OpeningSpec {
   sill: number;
   header: HeaderTypeId | 'auto';
   jacksPerSide: 'auto' | 1 | 2;
+  /** A post each side in place of the jacks, carrying the header. */
+  trimmerPost?: PostTypeId;
   /** Size of the window or door unit itself, and how far its bottom sits above the rough opening's. */
   unit?: { width: number; height: number; bottom?: number };
 }
@@ -362,6 +364,16 @@ export const LONG_HEADER = 72;
 export const LONG_HEAD_PLATE = 96;
 /** 3/S4.1: flat blocking runs at least 4'-0" past a plate step on the tall side. */
 export const STEP_BLOCKING = 48;
+interface SharedPost {
+  /** Left face of the post. */
+  x: number;
+  type: PostType;
+  /** The openings left and right of it. */
+  a: OpeningSpec;
+  b: OpeningSpec;
+}
+/** Two openings this much more than a post's width apart still share it, shimmed. */
+const SHARED_SLACK = 1 / 2;
 /** A king this close to where the end stud goes is the end stud. */
 const SAME_STUD = 1 / 16;
 /** A beam stretch this narrow is a pocket over a post, with no plate under the beam. */
@@ -382,6 +394,11 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
   const members: Member[] = [];
   const issues: Issue[] = [];
   const issue = (level: IssueLevel, message: string, openingId?: string) => issues.push({ level, message, openingId });
+  /** A post carrying a header: one solid piece, or built-up studs side by side. */
+  const addPostAt = (type: PostType, x0: number, len: number, openingId: string) => {
+    if (type.plies === 1) add({ role: 'post', x: x0, z: T, w: type.width, h: len, size: type.label, length: len, openingId });
+    else for (let i = 0; i < type.plies; i++) add({ role: 'post', x: x0 + i * T, z: T, w: T, h: len, length: len, openingId });
+  };
   const sections = buildSections(wall, issue, fmt);
   const sectionAt = (x: number) => sections.find((p) => x < p.x1 - EPS) ?? sections[sections.length - 1]!;
   /** Section a vertical member from x to x + w stands in. */
@@ -443,27 +460,49 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
     return xs.sort((a, b) => a - b);
   };
 
+  // Posts in place of jacks. Where two openings sit just a post's width apart, one post between them
+  // carries both headers, each bearing on half of it.
+  const postOf = (s: OpeningSpec) => (s.trimmerPost ? postType(s.trimmerPost) : null);
+  const shared = new Map<string, { left?: SharedPost; right?: SharedPost }>();
+  const byX = [...wall.openings].sort((p, q) => p.x - q.x);
+  for (let i = 1; i < byX.length; i++) {
+    const a = byX[i - 1]!;
+    const b = byX[i]!;
+    const type = postOf(b) ?? postOf(a);
+    if (!type) continue;
+    const gap = b.x - (a.x + a.width);
+    if (gap < type.width - EPS || gap > type.width + SHARED_SLACK) continue;
+    const sp: SharedPost = { x: postOf(b) ? b.x - type.width : a.x + a.width, type, a, b };
+    shared.set(a.id, { ...shared.get(a.id), right: sp });
+    shared.set(b.id, { ...shared.get(b.id), left: sp });
+  }
+
   const openings: OpeningFrame[] = [];
+  const headerBottoms = new Map<string, number>();
   for (const spec of wall.openings) {
     const tag = spec.label || '?';
+    const tp = postOf(spec);
+    const { left: shareLeft, right: shareRight } = shared.get(spec.id) ?? {};
     // 10/S4.1: (2) trimmer studs at headers over 6'-0" long.
-    const n = spec.jacksPerSide === 'auto' ? (spec.width + 2 * T > LONG_HEADER ? 2 : 1) : spec.jacksPerSide;
+    const n = tp ? 0 : spec.jacksPerSide === 'auto' ? (spec.width + 2 * T > LONG_HEADER ? 2 : 1) : spec.jacksPerSide;
+    const side = tp ? tp.width : n * T;
     const sill = spec.type === 'window' ? spec.sill : 0;
     const roTop = sill + spec.height;
-    const headerX = spec.x - n * T;
-    const headerLength = spec.width + 2 * n * T;
-    const kingLeft = headerX - T;
-    const kingRight = spec.x + spec.width + n * T;
+    const headerX = shareLeft ? shareLeft.x + shareLeft.type.width / 2 : spec.x - side;
+    const headerEnd = shareRight ? shareRight.x + shareRight.type.width / 2 : spec.x + spec.width + side;
+    const headerLength = headerEnd - headerX;
+    const kingLeft = spec.x - side - T;
+    const kingRight = spec.x + spec.width + side;
     let hasError = false;
 
     // An opening right at a wall end uses the end stud as its king.
-    const endKingLeft = Math.abs(kingLeft) < SAME_STUD;
-    const endKingRight = Math.abs(kingRight + T - L) < SAME_STUD;
-    if (kingLeft < T - EPS && !endKingLeft) {
+    const endKingLeft = !shareLeft && Math.abs(kingLeft) < SAME_STUD;
+    const endKingRight = !shareRight && Math.abs(kingRight + T - L) < SAME_STUD;
+    if (!shareLeft && kingLeft < T - EPS && !endKingLeft) {
       hasError = true;
       issue('error', `${tag}: king stud runs into the end stud. Move the opening at least ${fmt(T - kingLeft)} to the right.`, spec.id);
     }
-    if (kingRight + T > L - T + EPS && !endKingRight) {
+    if (!shareRight && kingRight + T > L - T + EPS && !endKingRight) {
       hasError = true;
       issue('error', `${tag}: king stud runs into the end stud. Move the opening at least ${fmt(kingRight + T - (L - T))} to the left.`, spec.id);
     }
@@ -522,8 +561,8 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
       topPlateCut,
       kingLeft,
       kingRight,
-      zoneStart: kingLeft,
-      zoneEnd: kingRight + T,
+      zoneStart: shareLeft ? headerX : kingLeft,
+      zoneEnd: shareRight ? headerEnd : kingRight + T,
       crippleZone,
       gapAbove: crippleZone[1] - crippleZone[0],
       crippleSpan,
@@ -532,13 +571,16 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
     openings.push(frame);
 
     const oid = spec.id;
-    if (!endKingLeft) add({ role: 'king', x: kingLeft, z: T, w: T, h: studLength, length: studLength, openingId: oid });
-    if (!endKingRight) add({ role: 'king', x: kingRight, z: T, w: T, h: studLength, length: studLength, openingId: oid });
+    headerBottoms.set(oid, headerBottom);
+    if (!shareLeft && !endKingLeft) add({ role: 'king', x: kingLeft, z: T, w: T, h: studLength, length: studLength, openingId: oid });
+    if (!shareRight && !endKingRight) add({ role: 'king', x: kingRight, z: T, w: T, h: studLength, length: studLength, openingId: oid });
     const jackLength = headerBottom - T;
-    for (let i = 0; i < n; i++) {
-      add({ role: 'jack', x: spec.x - (i + 1) * T, z: T, w: T, h: jackLength, length: jackLength, openingId: oid });
-      add({ role: 'jack', x: spec.x + spec.width + i * T, z: T, w: T, h: jackLength, length: jackLength, openingId: oid });
-    }
+    const trimmer = (x0: number) => {
+      if (tp) addPostAt(tp, x0, jackLength, oid);
+      else for (let i = 0; i < n; i++) add({ role: 'jack', x: x0 + i * T, z: T, w: T, h: jackLength, length: jackLength, openingId: oid });
+    };
+    if (!shareLeft) trimmer(spec.x - side);
+    if (!shareRight) trimmer(spec.x + spec.width);
     add({ role: 'header', x: headerX, z: headerBottom, w: headerLength, h: header.depth, size: name, length: headerLength, openingId: oid });
     for (let p = 0; p < headPlies; p++) {
       add({ role: 'headPlate', x: spec.x, z: roTop + p * T, w: spec.width, h: T, length: spec.width, openingId: oid });
@@ -576,6 +618,22 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
     } else {
       frame.plateCut = [spec.x, spec.x + spec.width];
     }
+  }
+
+  // Shared posts stop under the lower of the two headers; the other header is shimmed down to it.
+  for (const [id, { right }] of shared) {
+    if (!right) continue;
+    const ha = headerBottoms.get(id);
+    const hb = headerBottoms.get(right.b.id);
+    if (ha == null || hb == null) continue;
+    addPostAt(right.type, right.x, Math.min(ha, hb) - T, right.b.id);
+    const diff = Math.abs(ha - hb);
+    const higher = ha > hb ? right.a : right.b;
+    issue(
+      'note',
+      `${right.a.label} and ${right.b.label} share a ${right.type.label} post, each header bearing on half of it${diff > 1 / 32 ? `; ${higher.label}'s header sits ${fmt(diff)} higher, so block it up from the post` : ''}.`,
+      right.b.id,
+    );
   }
 
   // Openings whose framing collides.
@@ -1177,6 +1235,8 @@ function buildCutList(
       const builtUp = g.size === (wall.studs ?? '2x6');
       const labels = posts.filter((p) => !p.hasError && (p.type.plies === 1 ? p.type.label === g.size : builtUp)).map((p) => p.spec.label);
       if (labels.length) g.notes.push(`At ${labels.join(', ')}`);
+      const under = [...new Set(members.filter((m) => m.group === g.key && m.openingId).map((m) => openings.find((o) => o.spec.id === m.openingId)?.spec.label))].filter(Boolean);
+      if (under.length) g.notes.push(`Carry the header at ${under.join(', ')}`);
       if (builtUp) g.notes.push('Built-up: nail the plies together');
       else if (g.size === '4x4' && depth > 3.5) g.notes.push(`${toFraction(depth - 3.5)}" short of the wall depth`);
     }
