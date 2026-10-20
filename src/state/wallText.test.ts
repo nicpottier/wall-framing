@@ -263,18 +263,19 @@ describe('beams', () => {
 
 describe('first-floor example', () => {
   it('reads the plans file into the main house walls', () => {
+    // In the order they're stood: east and west run through the corners, north and south go between them.
     expect(EXAMPLE_PROJECT.walls.map((w) => w.name)).toEqual([
-      'North · west',
-      'North · east',
       'East · kitchen',
       'East · bay, north return',
       'East · bay',
       'East · bay, south return',
       'East · living',
-      'South · east',
-      'South · west',
       'West · south',
       'West · north',
+      'North · west',
+      'North · east',
+      'South · east',
+      'South · west',
       'Mudroom stub',
       'Bath north',
       'Bath south',
@@ -287,6 +288,8 @@ describe('first-floor example', () => {
       'Closet south',
       'Stair wall',
     ]);
+    expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'South · east')).toMatchObject({ length: '15-0 7/8', cornerLeft: 'inside', californiaLeft: 'none' });
+    expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'West · south')).toMatchObject({ cornerLeft: 'outside', californiaLeft: '2x6' });
     expect(EXAMPLE_PROJECT.walls.every((w) => w.tall.length === 0)).toBe(true);
     expect(EXAMPLE_PROJECT.walls.every((w) => w.planRun !== '')).toBe(true);
     expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'Hall')).toMatchObject({ planX: '96 1/8', planY: '267 5/8', planRun: 'south' });

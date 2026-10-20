@@ -2,7 +2,7 @@
 
 418 Cedar St, Leavenworth. First-floor walls of the main house and its bump-out: exterior WT34/WT35 (2x6), the garage partition WT82 on grid C, and the interior walls (2x4 where the plan draws them 4 1/2" over drywall, 2x6 where it draws 6 1/2"), from the architectural set: plan A101, window and door schedules A007, levels A200 and section A302. Beams and posts from S2.2 (Harezlak Engineering, Rev. 1); other headers are 4x8 per plan note 3.
 
-Exterior walls are seen from inside. Interior walls are seen from the south or west: east-west walls run west to east, north-south walls run north to south. Interior positions come from the wall lines in A101. Beam B2 (5 1/2 x 11 7/8 GL) runs north-south on grid 2, dropped per 11/S4.2 so its top is flush with the top plates: it breaks the plates of the north and south walls, which are built in two pieces ending at its posts, and caps the walls under it. Its four posts stand on their own on the subfloor (listed under Posts at the end), with the walls either side ending at them. Walls are split where a framer would build them separately. Plan positions are measured east and north from the outside corner of the framing at the southwest (grids 1 and F), to each wall's left end on the face it is seen from. Lengths are framing lengths: the south wall runs through the corners and the east and west walls butt into it. The house's east and west walls start 5 1/2" north of grid C, past the garage partition on C, which butts between them. The garage walls are left out for now, and so is the west wall along the stairs: the floor is open above it (S2.2) and below it (S2.1), so it is balloon framed two stories and built on its own, window 4 with it, along with the closet's north wall where it meets that stretch. Where a wall butts into another partway along, the wall it meets lists it under Intersections and gets backer studs and ladder blocking; where it butts into an end, that end gets a California corner. Verify in the field.
+Exterior walls are seen from inside. Interior walls are seen from the south or west: east-west walls run west to east, north-south walls run north to south. Interior positions come from the wall lines in A101. Beam B2 (5 1/2 x 11 7/8 GL) runs north-south on grid 2, dropped per 11/S4.2 so its top is flush with the top plates: it breaks the plates of the north and south walls, which are built in two pieces ending at its posts, and caps the walls under it. Its four posts stand on their own on the subfloor (listed under Posts at the end), with the walls either side ending at them. Walls are split where a framer would build them separately. Plan positions are measured east and north from the outside corner of the framing at the southwest (grids 1 and F), to each wall's left end on the face it is seen from. Walls are listed in the order they are stood. Lengths are framing lengths: the east and west walls run through the corners and go up first, then the north and south walls are stood between them. The house's east and west walls start 5 1/2" north of grid C, past the garage partition on C, which butts between them. The garage walls are left out for now, and so is the west wall along the stairs: the floor is open above it (S2.2) and below it (S2.1), so it is balloon framed two stories and built on its own, window 4 with it, along with the closet's north wall where it meets that stretch. Where a wall butts into another partway along, the wall it meets lists it under Intersections and gets backer studs and ladder blocking; where it butts into an end, that end gets a California corner. Verify in the field.
 
 ## Defaults
 - studs: 2x6 @ 16
@@ -17,26 +17,6 @@ Exterior walls are seen from inside. Interior walls are seen from the south or w
 - door ro: +2 x +2 1/2
 - sheathing: vertical, 2" thick, start 12, double seam studs, block seams
 - corners: left none, right none
-
-## North · west
-- length: 7-6 5/8
-- plan: 5 1/2, 408 9/16, running east
-- exterior: no
-- sheathing: vertical, 1/2" thick, start 0, double seam studs, block seams
-
-The north wall of the living space is the fire-rated garage partition WT82 (UL305), sheathed as shear wall SW-6 (8/S4.0); the sheathing thickness is assumed. Beam B2 (5 1/2 x 11 7/8 GL) lands on post P1 north at grid 2, dropped per 11/S4.2 so its top is flush with the top plates. The post stands on the subfloor on its own, so the wall is built in two pieces that end at it, their end studs nailed to it and their top plates strapped across the beam. Door C is the fire-rated 2'-10" x 6'-8" from the garage (A007), under the 4x12 called out on S2.2.
-
-### Openings
-- C: door 2-10 x 6-8, 2-6 1/2 from left, header 4x12
-
-## North · east
-- length: 15-0 7/8
-- plan: 101 5/8, 408 9/16, running east
-- layout: from right
-- exterior: no
-- sheathing: vertical, 1/2" thick, start 0, double seam studs, block seams
-
-The rest of the garage partition, from post P1 north to the east wall.
 
 ## East · kitchen
 - length: 24-5 1/2
@@ -76,39 +56,20 @@ Living room bump-out, 1'-5 3/4" deep (A101).
 From the bay back to the living wall's inside face; the living wall stops against its south face.
 
 ## East · living
-- length: 3-7
+- length: 4-0 9/16
 - plan: 282 1/2, 48 9/16, running south
-- corners: left none, right inside
-
-## South · east
-- length: 15-6 3/8
-- plan: 288, 5 1/2, running west
-- corners: left outside, right none
-- california corners: left 2x6
-
-From the east corner to post P1 south at grid 2, which carries beam B2 over a post below (S2.2) in line with the P1 post in the basement (S2.1). B2 is dropped (11/S4.2), so it breaks the top plates; the post stands on the subfloor and the south wall is built in two pieces that end at it.
-
-### Openings
-- 2: window 6-0 x 5-6, 8-0 from left, header 4x10
-
-## South · west
-- length: 8-0 1/8
-- plan: 96 1/8, 5 1/2, running west
-- layout: from right
 - corners: left none, right outside
 - california corners: right 2x6
 
-From post P1 south to the west corner. Window 1 (3'-0" x 1'-0" fixed, head 8'-0") sits over door A; one rough opening frames both.
-
-### Openings
-- A: door 3-0 x 6-8, 5-3 1/2 from right, ro 3-2 x 8-0
+Runs through to the southeast corner; the south wall butts into it.
 
 ## West · south
-- length: 7-0 1/2
-- plan: 5 1/2, 5 1/2, running north
-- corners: left inside, right none
+- length: 7-6
+- plan: 5 1/2, 0, running north
+- corners: left outside, right none
+- california corners: left 2x6
 
-From the south wall to the basement stair opening (S2.1), where the floor drops out from under the bottom plate.
+From the southwest corner, where the south wall butts into it, to the basement stair opening (S2.1), where the floor drops out from under the bottom plate.
 
 ## West · north
 - length: 13-7
@@ -125,6 +86,47 @@ From window 7's king stud to the garage partition. The second-floor stair openin
 ### Intersections
 - Bath north: 2x4 wall, 6-10 3/4 from left
 - Bath south: 2x4 wall, 3-7 1/8 from left
+
+## North · west
+- length: 7-6 5/8
+- plan: 5 1/2, 408 9/16, running east
+- exterior: no
+- sheathing: vertical, 1/2" thick, start 0, double seam studs, block seams
+
+The north wall of the living space is the fire-rated garage partition WT82 (UL305), sheathed as shear wall SW-6 (8/S4.0); the sheathing thickness is assumed. Beam B2 (5 1/2 x 11 7/8 GL) lands on post P1 north at grid 2, dropped per 11/S4.2 so its top is flush with the top plates. The post stands on the subfloor on its own, so the wall is built in two pieces that end at it, their end studs nailed to it and their top plates strapped across the beam. Door C is the fire-rated 2'-10" x 6'-8" from the garage (A007), under the 4x12 called out on S2.2.
+
+### Openings
+- C: door 2-10 x 6-8, 2-6 1/2 from left, header 4x12
+
+## North · east
+- length: 15-0 7/8
+- plan: 101 5/8, 408 9/16, running east
+- layout: from right
+- exterior: no
+- sheathing: vertical, 1/2" thick, start 0, double seam studs, block seams
+
+The rest of the garage partition, from post P1 north to the east wall.
+
+## South · east
+- length: 15-0 7/8
+- plan: 282 1/2, 5 1/2, running west
+- corners: left inside, right none
+
+From the east wall to post P1 south at grid 2, which carries beam B2 over a post below (S2.2) in line with the P1 post in the basement (S2.1). B2 is dropped (11/S4.2), so it breaks the top plates; the post stands on the subfloor and the south wall is built in two pieces that end at it.
+
+### Openings
+- 2: window 6-0 x 5-6, 7-6 1/2 from left, header 4x10
+
+## South · west
+- length: 7-6 5/8
+- plan: 96 1/8, 5 1/2, running west
+- layout: from right
+- corners: left none, right inside
+
+From post P1 south to the west wall. Window 1 (3'-0" x 1'-0" fixed, head 8'-0") sits over door A; one rough opening frames both.
+
+### Openings
+- A: door 3-0 x 6-8, 4-10 from right, ro 3-2 x 8-0
 
 ## Mudroom stub
 - length: 2-1
