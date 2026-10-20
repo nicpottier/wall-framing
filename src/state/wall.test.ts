@@ -45,7 +45,7 @@ describe('parseSize', () => {
 
 describe('resolveOpening', () => {
   it('centers the rough opening on the position from the left', () => {
-    const r = ok(win(), wall({ windowRoWidth: '3' }));
+    const r = ok(win(), wall({ windowRoSide: '1 1/2' }));
     expect(r.center).toBe(48);
     expect(r.roWidth).toBe(39);
     expect(r.x).toBe(48 - 19.5);
@@ -57,13 +57,19 @@ describe('resolveOpening', () => {
   });
 
   it('adds the allowance, or uses an explicit rough opening', () => {
-    expect(ok(win(), wall({ windowRoWidth: '3', windowRoHeight: '1/2' }))).toMatchObject({ roWidth: 39, roHeight: 48.5 });
+    expect(ok(win(), wall({ windowRoSide: '1 1/2', windowRoTop: '1/4', windowRoBottom: '1/4' }))).toMatchObject({ roWidth: 39, roHeight: 48.5 });
     expect(ok(win({ ro: '40 x 50' }), wall())).toMatchObject({ roWidth: 40, roHeight: 50 });
   });
 
+  it('defaults windows to 3/8" at the sides and top and 1 1/2" at the bottom', () => {
+    // A 3-0 x 4-0 unit: 36 3/4 x 49 7/8, sitting 1 1/2" above the rough sill.
+    expect(ok(win(), wall())).toMatchObject({ roWidth: 36.75, roHeight: 49.875, unitBottom: 1.5 });
+    expect(ok(win({ ro: '40 x 49' }), wall())).toMatchObject({ unitBottom: 1 });
+  });
+
   it("sets a window's sill from the wall head height or its own", () => {
-    expect(ok(win(), wall({ windowHeadHeight: '82 1/2', windowRoHeight: '3' })).sill).toBe(82.5 - 51);
-    expect(ok(win({ headHeight: '7-0' }), wall({ windowRoHeight: '3' })).sill).toBe(84 - 51);
+    expect(ok(win(), wall({ windowHeadHeight: '82 1/2', windowRoTop: '1 1/2', windowRoBottom: '1 1/2' })).sill).toBe(82.5 - 51);
+    expect(ok(win({ headHeight: '7-0' }), wall({ windowRoTop: '1 1/2', windowRoBottom: '1 1/2' })).sill).toBe(84 - 51);
   });
 
   it('rejects a window taller than its head height, and bad overrides', () => {
@@ -78,7 +84,8 @@ describe('toWallSpec', () => {
     const { spec, inputIssues } = toWallSpec(EXAMPLE_WALL);
     expect(inputIssues).toEqual([]);
     const [w1, d1] = spec.openings;
-    expect(w1).toMatchObject({ x: 30, width: 48, height: 46.5, sill: 36, unit: { width: 45, height: 43.5 } });
+    // 3-9 x 3-7 1/2 at 4-6: 3/8" each side and top, 1 1/2" below.
+    expect(w1).toMatchObject({ x: 54 - 22.875, width: 45.75, height: 45.375, sill: 82.5 - 45.375, unit: { width: 45, height: 43.5, bottom: 1.5 } });
     expect(d1).toMatchObject({ x: 152, width: 38, height: 82.5, sill: 0 });
     expect(spec.defaultHeader).toBe('4x8');
   });
@@ -98,9 +105,8 @@ describe('wallReducer', () => {
 
   it('places new openings after the last one, by centerline', () => {
     const s = wallReducer(wall({ openings: [win()] }), { type: 'addOpening', kind: 'window' });
-    // W1 RO spans 28 1/2..67 1/2; the next RO starts 24" later and is 39" wide
-    expect(s.openings[1]).toMatchObject({ label: 'W2', from: 'left', offset: toCenter(67.5 + 24, 39) });
+    // W1 RO spans 29 5/8..66 3/8; the next RO starts 24" later and is 36 3/4" wide
+    expect(s.openings[1]).toMatchObject({ label: 'W2', from: 'left', offset: '108 3/4' });
   });
 });
 
-const toCenter = (x: number, w: number) => String(x + w / 2);

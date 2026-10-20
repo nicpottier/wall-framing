@@ -13,7 +13,7 @@ Exterior walls are seen from inside. Interior walls are seen from the south or w
 - headers: 4x8, tight under plate
 - head height: 7-8
 - rough sill: single
-- window ro: +3 x +3
+- window ro: 3/8 sides, 3/8 top, 1 1/2 bottom
 - door ro: +2 x +2 1/2
 - sheathing: vertical, 2" thick, start 12, double seam studs, block seams
 - corners: left none, right none

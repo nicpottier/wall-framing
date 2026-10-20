@@ -33,8 +33,8 @@ export interface OpeningSpec {
   sill: number;
   header: HeaderTypeId | 'auto';
   jacksPerSide: 'auto' | 1 | 2;
-  /** Size of the window or door unit itself, for labeling. */
-  unit?: { width: number; height: number };
+  /** Size of the window or door unit itself, and how far its bottom sits above the rough opening's. */
+  unit?: { width: number; height: number; bottom?: number };
 }
 
 /** A post in the wall under a beam or girder bearing above. */

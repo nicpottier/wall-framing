@@ -87,8 +87,10 @@ export interface WallSettings {
   /** Floor to the top of window rough openings. */
   windowHeadHeight: string;
   /** How much larger the rough opening is than the unit. */
-  windowRoWidth: string;
-  windowRoHeight: string;
+  /** Windows: rough opening past the unit at each side, at the top, and at the bottom (for the sill pan and shims). */
+  windowRoSide: string;
+  windowRoTop: string;
+  windowRoBottom: string;
   doorRoWidth: string;
   doorRoHeight: string;
   sheathingOrientation: PanelOrientation;
@@ -139,8 +141,9 @@ export const DEFAULT_SETTINGS: WallSettings = {
   headerMount: 'dropped',
   defaultHeader: TYPICAL_HEADER,
   windowHeadHeight: '82 1/2',
-  windowRoWidth: '3',
-  windowRoHeight: '3',
+  windowRoSide: '3/8',
+  windowRoTop: '3/8',
+  windowRoBottom: '1 1/2',
   doorRoWidth: '2',
   doorRoHeight: '2 1/2',
   sheathingOrientation: 'vertical',
@@ -215,6 +218,8 @@ export type ResolvedOpening =
       headHeight: number;
       unitWidth: number;
       unitHeight: number;
+      /** Rough opening bottom to the bottom of the unit. */
+      unitBottom: number;
       /** True when a window uses the wall's head height. */
       defaultHead: boolean;
     }
@@ -229,10 +234,39 @@ export function roughOpening(o: OpeningInput, wall: WallSettings): { width: numb
   const unitWidth = parseLength(o.width);
   const unitHeight = parseLength(o.height);
   if (!(unitWidth > 0) || !(unitHeight > 0)) return `enter a valid ${kind} width and height`;
-  const addW = parseLength(o.type === 'window' ? wall.windowRoWidth : wall.doorRoWidth);
-  const addH = parseLength(o.type === 'window' ? wall.windowRoHeight : wall.doorRoHeight);
-  if (!isLength(addW) || !isLength(addH)) return `enter valid ${kind} rough opening allowances`;
-  return { width: unitWidth + addW, height: unitHeight + addH };
+  const a = allowances(o.type, wall);
+  if (!a) return `enter valid ${kind} rough opening allowances`;
+  return { width: unitWidth + a.width, height: unitHeight + a.height };
+}
+
+/** Rough opening past the unit: overall width and height, and how much of the height is below the unit. */
+export function allowances(type: OpeningType, wall: WallSettings): { width: number; height: number; bottom: number } | null {
+  if (type === 'window') {
+    const side = parseLength(wall.windowRoSide);
+    const top = parseLength(wall.windowRoTop);
+    const bottom = parseLength(wall.windowRoBottom);
+    return isLength(side) && isLength(top) && isLength(bottom) ? { width: 2 * side, height: top + bottom, bottom } : null;
+  }
+  const width = parseLength(wall.doorRoWidth);
+  const height = parseLength(wall.doorRoHeight);
+  return isLength(width) && isLength(height) ? { width, height, bottom: 0 } : null;
+}
+
+/**
+ * Settings saved before windows had separate side, top and bottom allowances: split the old
+ * overall width and height evenly.
+ */
+export function upgradeSettings<S extends Partial<WallSettings>>(s: S & { windowRoWidth?: string; windowRoHeight?: string }): S {
+  const { windowRoWidth, windowRoHeight, ...rest } = s;
+  if (rest.windowRoSide != null || windowRoWidth == null) return rest as S;
+  const w = parseLength(windowRoWidth);
+  const h = parseLength(windowRoHeight ?? '');
+  return {
+    ...rest,
+    windowRoSide: Number.isFinite(w) ? toFraction(w / 2) : DEFAULT_SETTINGS.windowRoSide,
+    windowRoTop: Number.isFinite(h) ? toFraction(h / 2) : DEFAULT_SETTINGS.windowRoTop,
+    windowRoBottom: Number.isFinite(h) ? toFraction(h / 2) : DEFAULT_SETTINGS.windowRoBottom,
+  } as S;
 }
 
 /** Turns a unit size, centerline position and the wall's allowances into a rough opening. */
@@ -253,7 +287,10 @@ export function resolveOpening(o: OpeningInput, wall: WallInput): ResolvedOpenin
     center = L - offset;
   }
   const x = center - ro.width / 2;
-  const base = { x, center, roWidth: ro.width, roHeight: ro.height, unitWidth, unitHeight };
+  // The unit sits the bottom allowance up from the rough sill, or as close to that as an explicit R.O. allows.
+  const below = allowances(o.type, wall)?.bottom ?? 0;
+  const unitBottom = unitHeight > 0 ? Math.max(0, Math.min(below, ro.height - unitHeight)) : 0;
+  const base = { x, center, roWidth: ro.width, roHeight: ro.height, unitWidth, unitHeight, unitBottom };
 
   if (!window) return { ok: true, ...base, sill: 0, headHeight: ro.height, defaultHead: false };
 
@@ -503,7 +540,7 @@ export function toWallSpec(input: WallInput): ParsedWall {
       sill: r.sill,
       header: isHeaderTypeId(o.header) ? o.header : 'auto',
       jacksPerSide: o.jacksPerSide === 'auto' ? 'auto' : (Number(o.jacksPerSide) as 1 | 2),
-      unit: r.unitWidth > 0 && r.unitHeight > 0 ? { width: r.unitWidth, height: r.unitHeight } : undefined,
+      unit: r.unitWidth > 0 && r.unitHeight > 0 ? { width: r.unitWidth, height: r.unitHeight, bottom: r.unitBottom } : undefined,
     });
   }
   const posts: PostSpec[] = [];

@@ -1282,6 +1282,16 @@ text.ro-s.door {
   stroke: var(--err);
   fill: color-mix(in srgb, var(--err) 8%, transparent);
 }
+.unit-ol {
+  --op: var(--win);
+  fill: none;
+  stroke: var(--op);
+  stroke-width: 1;
+  opacity: 0.55;
+}
+.unit-ol.door {
+  --op: var(--door);
+}
 .ro-cl {
   --op: var(--win);
   stroke: var(--op);

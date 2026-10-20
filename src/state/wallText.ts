@@ -135,7 +135,22 @@ const SETTINGS: Record<string, SettingParser> = {
     return out;
   },
   'head height': lengthSetting('windowHeadHeight', 'head height'),
-  'window ro': allowance('windowRoWidth', 'windowRoHeight'),
+  'window ro': (v) => {
+    // "3/8 sides, 3/8 top, 1 1/2 bottom", or the older overall "+3 x +3", split evenly.
+    const old = v.match(/^\+?\s*(.+?)\s+[x×]\s+\+?\s*(.+)$/i);
+    if (old && isLen(lengthText(old[1]!)) && isLen(lengthText(old[2]!))) {
+      const half = (t: string) => toFraction(parseLength(lengthText(t)) / 2);
+      return { windowRoSide: half(old[1]!), windowRoTop: half(old[2]!), windowRoBottom: half(old[2]!) };
+    }
+    const out: Partial<WallSettings> = {};
+    const keys = { sides: 'windowRoSide', side: 'windowRoSide', top: 'windowRoTop', bottom: 'windowRoBottom' } as const;
+    for (const c of clauses(v)) {
+      const m = c.match(/^\+?\s*(.+?)\s+(sides?|top|bottom)$/i);
+      if (!m || !isLen(lengthText(m[1]!))) return 'write the window allowance like "3/8 sides, 3/8 top, 1 1/2 bottom"';
+      out[keys[m[2]!.toLowerCase() as keyof typeof keys]] = lengthText(m[1]!);
+    }
+    return out;
+  },
   'door ro': allowance('doorRoWidth', 'doorRoHeight'),
   sheathing: (v) => {
     if (/^(none|no)$/.test(words(v))) return { sheathed: 'no' };
@@ -187,7 +202,7 @@ const FORMAT: [string, (s: WallSettings) => string][] = [
   ['headers', (s) => `${headerName(headerType(s.defaultHeader))}, ${s.headerMount === 'dropped' ? 'tight under plate' : 'on opening'}`],
   ['head height', (s) => s.windowHeadHeight],
   ['rough sill', (s) => (s.sillPlies === '1' ? 'single' : 'double')],
-  ['window ro', (s) => `+${s.windowRoWidth} x +${s.windowRoHeight}`],
+  ['window ro', (s) => `${s.windowRoSide} sides, ${s.windowRoTop} top, ${s.windowRoBottom} bottom`],
   ['door ro', (s) => `+${s.doorRoWidth} x +${s.doorRoHeight}`],
   [
     'sheathing',

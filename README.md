@@ -58,7 +58,7 @@ The overview's **Text** tab edits the whole project as plain text, kept in sync 
 - studs: 2x6 @ 16
 - headers: 4x8, tight under plate
 - head height: 6-10 1/2
-- window ro: +3 x +3
+- window ro: 3/8 sides, 3/8 top, 1 1/2 bottom
 - door ro: +2 x +2 1/2
 - sheathing: vertical, 2" thick, start 12, double seam studs, block seams
 
@@ -99,7 +99,7 @@ The overview's **Text** tab edits the whole project as plain text, kept in sync 
 ## Framing conventions
 
 - Wall height is measured from the floor to the top of the top plate. Stud length = height − bottom plate − top plate(s). A 97 1/8" wall gets 92 5/8" precuts.
-- Openings are entered by unit size (the window or door itself). The rough opening is the unit size plus the wall's allowances, set separately for window and door width and height.
+- Openings are entered by unit size (the window or door itself). The rough opening is the unit size plus the wall's allowances: for windows 3/8" each side, 3/8" at the top and 1 1/2" at the bottom (the unit sits that far above the rough sill, for the sill pan and shims), and for doors 2" in width and 2 1/2" in height. The drawing outlines the unit inside its rough opening.
 - Window sills come from the head height (floor to top of rough opening). It is set once for the wall and can be overridden per window. Sill = head height − rough opening height.
 - Each opening is located from the left or right end of the wall to its **centerline**; the rough opening is centered on it.
 - Lengths can be typed framer-style: `4-6` is 4'-6", `4-6 1/2` adds a fraction, `92-5/8` is 92 5/8", plain numbers are inches. Opening sizes also take four-digit callouts: `3046` is 3'-0" × 4'-6".

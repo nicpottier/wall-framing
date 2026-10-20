@@ -405,6 +405,20 @@ function OpeningOverlay({ o, framing, fmt, v, compact }: OverlayProps) {
   return (
     <g>
       <rect className={`ro ${spec.type}${err}`} {...v.box(spec.x, o.roBottom, spec.width, spec.height)} />
+      {/* the unit itself, centered across the opening and set on its bottom allowance */}
+      {spec.unit && spec.unit.width <= spec.width && spec.unit.height <= spec.height && (
+        <rect
+          className={`unit-ol ${spec.type}`}
+          {...v.box(
+            spec.x + (spec.width - spec.unit.width) / 2,
+            o.roBottom + (spec.unit.bottom ?? (spec.height - spec.unit.height) / 2),
+            spec.unit.width,
+            spec.unit.height,
+          )}
+        >
+          <title>{`${spec.label} unit ${toFraction(spec.unit.width)} × ${toFraction(spec.unit.height)}, ${fmt(spec.unit.bottom ?? 0)} above the rough sill`}</title>
+        </rect>
+      )}
       <line className={`ro-x ${spec.type}`} x1={xl} y1={yTop} x2={xr} y2={yBot} />
       <line className={`ro-x ${spec.type}`} x1={xr} y1={yTop} x2={xl} y2={yBot} />
       <line className={`ro-cl ${spec.type}`} x1={cx} y1={yTop} x2={cx} y2={yBot}>

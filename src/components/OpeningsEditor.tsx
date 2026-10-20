@@ -200,7 +200,7 @@ function OpeningCard({ opening: o, wall, hasError, fmt, dispatch }: CardProps) {
 /** Wall-wide rules for sizing rough openings from window and door unit sizes, shown above the cards. */
 function RoughOpeningDefaults({ wall, dispatch }: { wall: WallInput; dispatch: Dispatch<WallAction> }) {
   const set = (key: WallSettingKey) => (value: string) => dispatch({ type: 'set', key, value });
-  const summary = `Head ${wall.windowHeadHeight || '—'}" · ${headerName(headerType(wall.defaultHeader))} ${wall.headerMount === 'dropped' ? 'under plate' : 'on opening'} · window +${wall.windowRoWidth}/${wall.windowRoHeight} · door +${wall.doorRoWidth}/${wall.doorRoHeight}`;
+  const summary = `Head ${wall.windowHeadHeight || '—'}" · ${headerName(headerType(wall.defaultHeader))} ${wall.headerMount === 'dropped' ? 'under plate' : 'on opening'} · window ${wall.windowRoSide}/${wall.windowRoTop}/${wall.windowRoBottom} · door +${wall.doorRoWidth}/${wall.doorRoHeight}`;
 
   return (
     <details className="subpanel">
@@ -236,8 +236,11 @@ function RoughOpeningDefaults({ wall, dispatch }: { wall: WallInput; dispatch: D
         />
         <p className="field-note full">Tight under the top plate, with cripples down to a flat head plate, is typical per 10/S4.1.</p>
         <p className="field-group full">Added to the unit size</p>
-        <Field label="Window width +">{(id) => <LengthInput id={id} value={wall.windowRoWidth} onChange={set('windowRoWidth')} />}</Field>
-        <Field label="Window height +">{(id) => <LengthInput id={id} value={wall.windowRoHeight} onChange={set('windowRoHeight')} />}</Field>
+        <Field label="Window, each side +">{(id) => <LengthInput id={id} value={wall.windowRoSide} onChange={set('windowRoSide')} />}</Field>
+        <Field label="Window, top +">{(id) => <LengthInput id={id} value={wall.windowRoTop} onChange={set('windowRoTop')} />}</Field>
+        <Field label="Window, bottom +" hint="Sill pan and shims">
+          {(id) => <LengthInput id={id} value={wall.windowRoBottom} onChange={set('windowRoBottom')} />}
+        </Field>
         <Field label="Door width +">{(id) => <LengthInput id={id} value={wall.doorRoWidth} onChange={set('doorRoWidth')} />}</Field>
         <Field label="Door height +">{(id) => <LengthInput id={id} value={wall.doorRoHeight} onChange={set('doorRoHeight')} />}</Field>
       </div>

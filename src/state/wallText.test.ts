@@ -200,6 +200,15 @@ describe('interior walls, corners and intersections', () => {
   });
 });
 
+describe('window allowances', () => {
+  it('reads sides, top and bottom, and splits the older overall form evenly', () => {
+    const at = (v: string) => parseProjectText(`## Defaults\n- window ro: ${v}\n\n## Wall\n- length: 10-0\n`).project!.defaults;
+    expect(at('3/8 sides, 3/8 top, 1 1/2 bottom')).toMatchObject({ windowRoSide: '3/8', windowRoTop: '3/8', windowRoBottom: '1 1/2' });
+    expect(at('+3 x +3')).toMatchObject({ windowRoSide: '1 1/2', windowRoTop: '1 1/2', windowRoBottom: '1 1/2' });
+    expect(parseProjectText(`## Defaults\n- window ro: lots\n`).errors[0]!.message).toContain('3/8 sides');
+  });
+});
+
 describe('freestanding posts', () => {
   const text = `## Wall\n- length: 10-0\n\n## Posts\n- P1: 6x6 under 5 1/2 x 11 7/8 GL, at 98 7/8, 2 3/4\n- P2: (3) studs under 4x10, at 10-0, 20-0\n`;
 

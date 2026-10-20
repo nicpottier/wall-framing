@@ -8,6 +8,7 @@ import {
   EXAMPLE_WALL,
   newId,
   roughOpening,
+  upgradeSettings,
   wallReducer,
   type OpeningInput,
   type WallAction,
@@ -134,7 +135,7 @@ function upgradeWall(w: Partial<WallInput>, index: number): WallInput {
   const openings = (w.openings ?? []).map(
     (o): OpeningInput => ({ ...o, ro: o.ro ?? '', header: isHeaderTypeId(o.header) ? o.header : 'auto' }),
   );
-  return { ...DEFAULT_SETTINGS, ...w, id: w.id ?? `w${index + 1}`, notes: w.notes ?? '', planX: w.planX ?? '', planY: w.planY ?? '', planRun: w.planRun ?? '', openings, posts: w.posts ?? [], tall: w.tall ?? [], intersections: w.intersections ?? [], beams: w.beams ?? [] } as WallInput;
+  return { ...DEFAULT_SETTINGS, ...upgradeSettings(w), id: w.id ?? `w${index + 1}`, notes: w.notes ?? '', planX: w.planX ?? '', planY: w.planY ?? '', planRun: w.planRun ?? '', openings, posts: w.posts ?? [], tall: w.tall ?? [], intersections: w.intersections ?? [], beams: w.beams ?? [] } as WallInput;
 }
 
 /** v2 positions were to the near rough-opening edge; move them to the centerline so nothing shifts. */
@@ -164,7 +165,7 @@ export function loadSaved(): Saved {
         return {
           project: {
             ...saved.project,
-            defaults: { ...DEFAULT_SETTINGS, ...saved.project.defaults },
+            defaults: { ...DEFAULT_SETTINGS, ...upgradeSettings(saved.project.defaults) },
             walls: saved.project.walls.map(upgradeWall),
             posts: saved.project.posts ?? [],
           },
