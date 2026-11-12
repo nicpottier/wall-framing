@@ -105,6 +105,7 @@ The overview's **Text** tab edits the whole project as plain text, kept in sync 
 - Each opening is located from the left or right end of the wall to its **centerline**; the rough opening is centered on it.
 - Lengths can be typed framer-style: `4-6` is 4'-6", `4-6 1/2` adds a fraction, `92-5/8` is 92 5/8", plain numbers are inches. Opening sizes also take four-digit callouts: `3046` is 3'-0" × 4'-6".
 - Layout marks put stud centers on the spacing, measured from the chosen end, so sheathing edges land on studs. End studs sit flush at both ends.
+- Under the layout marks, the **R.O.** row marks each rough opening's start and end with its distance from the same end, so openings go on the plates with the same tape pull as the studs.
 - Each opening gets a king stud on each side and jack studs (trimmers) under the header.
 - Windows get a rough sill (single or double) on cripples: one at each end plus one on each layout mark.
 - At doors, the bottom plate is cut out between the jacks after the wall is stood.

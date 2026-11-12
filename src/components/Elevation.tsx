@@ -118,6 +118,23 @@ export function useWidth<E extends HTMLElement>() {
 
 const FULL = ['stud', 'seamStud', 'king', 'post'];
 
+/**
+ * Puts each opening-edge label beside its tick, an opening's start to the left and its end to the
+ * right, dropping a label to a second line when it would run into the one before it.
+ */
+function placeEdgeLabels<E extends { sx: number; side: 'start' | 'end'; label: string }>(edges: E[]): (E & { row: number })[] {
+  const ends = [-Infinity, -Infinity];
+  return [...edges]
+    .sort((a, b) => a.sx - b.sx)
+    .map((e) => {
+      const w = textWidth(e.label) * 0.9 + 3;
+      const [x0, x1] = e.side === 'start' ? [e.sx - w, e.sx] : [e.sx, e.sx + w];
+      const row = x0 > ends[0]! + 4 ? 0 : x0 > ends[1]! + 4 ? 1 : 0;
+      ends[row] = x1;
+      return { ...e, row };
+    });
+}
+
 /** Center of the widest gap between members (each T wide, given by left edge) within [lo, hi]. */
 function widestBay(lo: number, hi: number, xs: number[]) {
   let best = { w: -1, c: (lo + hi) / 2 };
@@ -193,10 +210,20 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
   const leftSec = sections[0]!;
   const rightSec = sections[sections.length - 1]!;
 
-  // Rows past the bottom plate: layout marks, then chain dimensions to rough-opening edges.
-  const pts = [0, ...[...openings].sort((a, b) => a.spec.x - b.spec.x).flatMap((o) => [o.spec.x, o.spec.x + o.spec.width]), L];
+  // Rows past the bottom plate: layout marks, then each rough opening's edges, both measured from the
+  // end the layout is pulled from so they can be marked on the plates with the same tape pull.
   const layoutY = Y(0) + 14 * bt;
-  const chainY = Y(0) + 62 * bt;
+  const edgeY = Y(0) + 50 * bt;
+  const fromLayoutEnd = (x: number) => (wall.layoutFrom === 'right' ? L - x : x);
+  const edgeMarks = placeEdgeLabels(
+    [...openings]
+      .sort((a, b) => a.spec.x - b.spec.x)
+      .flatMap((o) => [
+        { o, x: o.spec.x, side: 'start' as const },
+        { o, x: o.spec.x + o.spec.width, side: 'end' as const },
+      ])
+      .map((e) => ({ ...e, label: fmt(fromLayoutEnd(e.x)), sx: X(e.x) })),
+  );
   const lastMark = layout.at(-1);
   const layoutStep = lastMark && wall.spacing * ppi < textWidth(fmt(lastMark.distance)) + 10 ? 2 : 1;
 
@@ -359,15 +386,30 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
               </g>
             ))}
 
-            {/* chain dimensions to rough openings */}
-            <text className="cap" x={v.left - 10} y={chainY + 4} textAnchor="end">
-              TO R.O.
-            </text>
-            {pts.slice(1).map((p, i) => {
-              const prev = pts[i]!;
-              if (p - prev <= 1e-6) return null;
-              return <HDim key={`ch${i}`} x1={X(prev)} x2={X(p)} y={chainY} label={fmt(p - prev)} ext={Y(0) + 40 * bt} />;
-            })}
+            {/* rough opening edges, from the layout end */}
+            {openings.length > 0 && (
+              <text className="cap" x={v.left - 10} y={v.textAt(edgeY, 7, 15, bt)} textAnchor="end">
+                {`R.O. ${v.arrow}`}
+              </text>
+            )}
+            {openings.map((o) => (
+              <line key={`rb${o.spec.id}`} className={`ro-span ${o.spec.type}`} x1={X(o.spec.x)} y1={edgeY} x2={X(o.spec.x + o.spec.width)} y2={edgeY}>
+                <title>{`${o.spec.label} rough opening, ${fmt(fromLayoutEnd(o.spec.x))} to ${fmt(fromLayoutEnd(o.spec.x + o.spec.width))} from the ${wall.layoutFrom} end`}</title>
+              </line>
+            ))}
+            {edgeMarks.map((e, i) => (
+              <g key={`re${i}`}>
+                <line className={`ro-k ${e.o.spec.type}`} x1={e.sx} y1={Y(0) + 4 * bt} x2={e.sx} y2={edgeY + 5 * bt} />
+                <text
+                  className={`ro-e ${e.o.spec.type}`}
+                  x={e.sx + (e.side === 'start' ? -3 : 3)}
+                  y={v.textAt(edgeY + e.row * 13 * bt, 9, 17, bt)}
+                  textAnchor={e.side === 'start' ? 'end' : 'start'}
+                >
+                  {e.label}
+                </text>
+              </g>
+            ))}
           </>
         )}
       </svg>

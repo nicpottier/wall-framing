@@ -1361,6 +1361,28 @@ line.ro-cl.door {
   font: 500 10px var(--f-mono);
   fill: var(--muted);
 }
+.ro-span {
+  --op: var(--win);
+  stroke: var(--op);
+  stroke-width: 2.5;
+  opacity: 0.55;
+}
+.ro-k {
+  --op: var(--win);
+  stroke: var(--op);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+.ro-e {
+  --op: var(--win);
+  font: 600 10px var(--f-mono);
+  fill: var(--op);
+}
+.ro-span.door,
+.ro-k.door,
+.ro-e.door {
+  --op: var(--door);
+}
 .lay-k {
   stroke: var(--muted);
   stroke-width: 1;
