@@ -1211,7 +1211,8 @@ a.brand {
   fill: var(--w-step);
 }
 .m-cornerBacker,
-.m-partitionStud {
+.m-partitionStud,
+.m-teeFlat {
   fill: var(--w-backer);
 }
 .beam-ov {
@@ -1382,6 +1383,11 @@ line.ro-cl.door {
 .ro-k.door,
 .ro-e.door {
   --op: var(--door);
+}
+.ro-span.backing,
+.ro-k.backing,
+.ro-e.backing {
+  --op: var(--sec-structure);
 }
 .lay-k {
   stroke: var(--muted);

@@ -14,9 +14,9 @@ export const swatchVar = (role: Role) => {
           ? 'seam'
           : role === 'blocking'
             ? 'block'
-            : role === 'stepBlocking' || role === 'ladder'
+            : role === 'stepBlocking'
               ? 'step'
-              : role === 'cornerBacker' || role === 'partitionStud'
+              : role === 'cornerBacker' || role === 'partitionStud' || role === 'teeFlat'
                 ? 'backer'
                 : role;
   return `var(--w-${name})`;
@@ -39,16 +39,16 @@ const LEGEND: [string, Role][] = [
 const EXTRA_LEGEND: [string, Role][] = [
   ['Post', 'post'],
   ['Corner / partition backer', 'cornerBacker'],
-  ['Partition backer', 'partitionStud'],
-  ['Ladder blocking', 'ladder'],
+  ['Intersection backer', 'teeFlat'],
   ['Step blocking', 'stepBlocking'],
 ];
 
 export function Legend({ showSheathing, framing }: { showSheathing: boolean; framing?: Framing }) {
   const has = (role: Role) => framing?.members.some((m) => m.role === role);
   // Corner and partition backers share a swatch; list it once.
-  const extras = EXTRA_LEGEND.filter(([, role]) => has(role) && !(role === 'partitionStud' && has('cornerBacker'))).map(
-    ([name, role]): [string, Role] => [role === 'cornerBacker' && !has('partitionStud') ? 'Corner backer' : name, role],
+  // Corner and intersection backers share a swatch; list it once.
+  const extras = EXTRA_LEGEND.filter(([, role]) => has(role) && !(role === 'teeFlat' && has('cornerBacker'))).map(
+    ([name, role]): [string, Role] => [role === 'cornerBacker' ? (has('teeFlat') ? 'Corner / intersection backer' : 'Corner backer') : name, role],
   );
   return (
     <div className="legend">

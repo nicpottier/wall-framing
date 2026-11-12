@@ -76,7 +76,7 @@ export function StructureEditor({ wall, errorIds, fmt, dispatch }: Props) {
         </div>
         {empty && (
           <p className="empty">
-            Add an intersection where another wall butts in partway along (it gets backer studs and ladder blocking), a post and beam where a
+            Add an intersection where another wall butts in partway along (it gets an L of backing: a stud on edge and a flat 2x6), a post and beam where a
             dropped beam bears on this wall and breaks its top plates, or a tall stretch where the top plate steps up per 3/S4.1.
           </p>
         )}

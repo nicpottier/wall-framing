@@ -122,8 +122,9 @@ const FULL = ['stud', 'seamStud', 'king', 'post'];
  * Puts each opening-edge label beside its tick, an opening's start to the left and its end to the
  * right, dropping a label to a second line when it would run into the one before it.
  */
-function placeEdgeLabels<E extends { sx: number; side: 'start' | 'end'; label: string }>(edges: E[]): (E & { row: number })[] {
-  const ends = [-Infinity, -Infinity];
+function placeEdgeLabels<E extends { sx: number; side: 'start' | 'end'; label: string }>(edges: E[], captionEnd: number): (E & { row: number })[] {
+  // The row's caption sits at the start of the first line.
+  const ends = [captionEnd, -Infinity];
   return [...edges]
     .sort((a, b) => a.sx - b.sx)
     .map((e) => {
@@ -210,20 +211,29 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
   const leftSec = sections[0]!;
   const rightSec = sections[sections.length - 1]!;
 
-  // Rows past the bottom plate: layout marks, then each rough opening's edges, both measured from the
-  // end the layout is pulled from so they can be marked on the plates with the same tape pull.
+  // Rows past the bottom plate: layout marks, then the edges of each rough opening and of the backing
+  // where walls butt in, all measured from the end the layout is pulled from so they can be marked on
+  // the plates with the same tape pull.
   const layoutY = Y(0) + 14 * bt;
   const edgeY = Y(0) + 50 * bt;
   const fromLayoutEnd = (x: number) => (wall.layoutFrom === 'right' ? L - x : x);
+  const spans = [
+    ...openings.map((o) => ({ kind: o.spec.type as string, x0: o.spec.x, x1: o.spec.x + o.spec.width, title: `${o.spec.label} rough opening` })),
+    ...framing.intersections.flatMap((it) =>
+      it.backing ? [{ kind: 'backing', x0: it.backing[0], x1: it.backing[1], title: `Backing for ${it.spec.label}` }] : [],
+    ),
+  ].sort((a, b) => a.x0 - b.x0);
   const edgeMarks = placeEdgeLabels(
-    [...openings]
-      .sort((a, b) => a.spec.x - b.spec.x)
-      .flatMap((o) => [
-        { o, x: o.spec.x, side: 'start' as const },
-        { o, x: o.spec.x + o.spec.width, side: 'end' as const },
+    spans
+      .flatMap((sp) => [
+        { kind: sp.kind, x: sp.x0, side: 'start' as const },
+        { kind: sp.kind, x: sp.x1, side: 'end' as const },
       ])
       .map((e) => ({ ...e, label: fmt(fromLayoutEnd(e.x)), sx: X(e.x) })),
+    v.left - 6,
   );
+  const hasBacking = spans.some((sp) => sp.kind === 'backing');
+  const hasOpenings = openings.length > 0;
   const lastMark = layout.at(-1);
   const layoutStep = lastMark && wall.spacing * ppi < textWidth(fmt(lastMark.distance)) + 10 ? 2 : 1;
 
@@ -386,22 +396,22 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
               </g>
             ))}
 
-            {/* rough opening edges, from the layout end */}
-            {openings.length > 0 && (
+            {/* rough opening and backing edges, from the layout end */}
+            {spans.length > 0 && (
               <text className="cap" x={v.left - 10} y={v.textAt(edgeY, 7, 15, bt)} textAnchor="end">
-                {`R.O. ${v.arrow}`}
+                {`${[hasOpenings && 'R.O.', hasBacking && 'BACKING'].filter(Boolean).join(' · ')} ${v.arrow}`}
               </text>
             )}
-            {openings.map((o) => (
-              <line key={`rb${o.spec.id}`} className={`ro-span ${o.spec.type}`} x1={X(o.spec.x)} y1={edgeY} x2={X(o.spec.x + o.spec.width)} y2={edgeY}>
-                <title>{`${o.spec.label} rough opening, ${fmt(fromLayoutEnd(o.spec.x))} to ${fmt(fromLayoutEnd(o.spec.x + o.spec.width))} from the ${wall.layoutFrom} end`}</title>
+            {spans.map((sp) => (
+              <line key={`rb${sp.x0}-${sp.kind}`} className={`ro-span ${sp.kind}`} x1={X(sp.x0)} y1={edgeY} x2={X(sp.x1)} y2={edgeY}>
+                <title>{`${sp.title}, ${fmt(fromLayoutEnd(sp.x0))} to ${fmt(fromLayoutEnd(sp.x1))} from the ${wall.layoutFrom} end`}</title>
               </line>
             ))}
             {edgeMarks.map((e, i) => (
               <g key={`re${i}`}>
-                <line className={`ro-k ${e.o.spec.type}`} x1={e.sx} y1={Y(0) + 4 * bt} x2={e.sx} y2={edgeY + 5 * bt} />
+                <line className={`ro-k ${e.kind}`} x1={e.sx} y1={Y(0) + 4 * bt} x2={e.sx} y2={edgeY + 5 * bt} />
                 <text
-                  className={`ro-e ${e.o.spec.type}`}
+                  className={`ro-e ${e.kind}`}
                   x={e.sx + (e.side === 'start' ? -3 : 3)}
                   y={v.textAt(edgeY + e.row * 13 * bt, 9, 17, bt)}
                   textAnchor={e.side === 'start' ? 'end' : 'start'}

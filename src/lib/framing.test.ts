@@ -508,29 +508,47 @@ describe('california corners', () => {
 });
 
 describe('intersections', () => {
-  it('frames each side of a 2x4 wall with ladder blocking between', () => {
+  it('backs a 2x4 wall with an L centered on it: a stud on edge and a flat 2x6', () => {
     const f = frame(wall({ intersections: [{ id: 'i', label: 'Bath', x: 40, width: 3.5 }] }));
-    // Faces at 38 1/4 and 41 3/4; backers leave 3/4" of drywall nailing past each.
-    expect(xs(f, 'partitionStud')).toEqual([36, 42.5]);
+    // 36 1/2 to 43 1/2: 1 3/4" of drywall nailing past each face of the 2x4 wall.
+    expect(of(f, 'partitionStud').map((m) => [m.x, m.w, m.size])).toEqual([[36.5, 1.5, '2x6']]);
+    expect(of(f, 'teeFlat').map((m) => [m.x, m.w, m.size, m.length])).toEqual([[38, 5.5, '2x6', f.studLength]]);
     expect(of(f, 'stud').some((m) => m.layoutCenter === 32)).toBe(true);
-    const ladder = of(f, 'ladder');
-    expect(ladder.length).toBe(3);
-    expect(ladder.every((m) => m.x === 37.5 && m.w === 5)).toBe(true);
-    expect(ladder.map((m) => m.z + m.h / 2)).toEqual([24, 48, 72]);
-    expect(f.intersections[0]!.bay).toEqual([37.5, 42.5]);
+    expect(f.intersections[0]!.backing).toEqual([36.5, 43.5]);
+    expect(f.cutList.find((g) => g.role === 'teeFlat')!.notes).toContain('Laid flat at the inside face, centered where Bath butts in');
   });
 
-  it('uses a king beside it instead of adding a stud', () => {
-    // W1's right king runs from 79 1/2 to 81.
+  it('backs a 2x6 wall the same way, 3/4" past each face', () => {
+    const f = frame(wall({ intersections: [{ id: 'i', label: 'Hall', x: 40, width: 5.5 }] }));
+    expect(of(f, 'partitionStud').map((m) => [m.x, m.w])).toEqual([[36.5, 1.5]]);
+    expect(of(f, 'teeFlat').map((m) => [m.x, m.w])).toEqual([[38, 5.5]]);
+  });
+
+  it('uses the wall\'s own size for the stud on edge in a 2x4 wall', () => {
+    const f = frame(wall({ studs: '2x4', intersections: [{ id: 'i', label: 'Bath', x: 40, width: 3.5 }] }));
+    expect(of(f, 'partitionStud').map((m) => m.size)).toEqual(['2x4']);
+    expect(of(f, 'teeFlat').map((m) => m.size)).toEqual(['2x6']);
+  });
+
+  it('lets a king beside it stand in for the stud on edge', () => {
+    // W1's right king runs from 79 1/2 to 81, right where the L's stud on edge would go.
+    const f = frame(wall({ openings: [opening()], intersections: [{ id: 'i', label: 'P', x: 83, width: 3.5 }] }));
+    expect(of(f, 'partitionStud')).toHaveLength(0);
+    expect(of(f, 'teeFlat').map((m) => m.x)).toEqual([81]);
+    expect(f.intersections[0]!.backing).toEqual([79.5, 86.5]);
+  });
+
+  it('moves the flat 2x6 clear of a king beside it while it still covers the wall', () => {
+    // W1's right king runs from 79 1/2 to 81; the 2x4 wall's faces are 82 1/4 to 85 3/4.
     const f = frame(wall({ openings: [opening()], intersections: [{ id: 'i', label: 'P', x: 84, width: 3.5 }] }));
-    expect(xs(f, 'partitionStud')).toEqual([86.5]);
-    expect(f.intersections[0]!.bay).toEqual([81, 86.5]);
+    expect(of(f, 'teeFlat').map((m) => m.x)).toEqual([81]);
+    expect(of(f, 'partitionStud')).toHaveLength(0);
   });
 
   it('needs nothing more where a post covers it', () => {
     const f = frame(wall({ posts: [{ id: 'p', label: 'P1', x: 37.25, type: '6x6' }], intersections: [{ id: 'i', label: 'Stub', x: 40, width: 3.5 }] }));
+    expect(of(f, 'teeFlat')).toHaveLength(0);
     expect(of(f, 'partitionStud')).toHaveLength(0);
-    expect(of(f, 'ladder')).toHaveLength(0);
   });
 
   it('warns when it meets the wall inside an opening', () => {
