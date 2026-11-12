@@ -1,6 +1,6 @@
 import type { CutGroup } from '../lib/framing';
 import { headerName, headerType, isHeaderTypeId, postType, type HeaderTypeId, type PostTypeId } from '../lib/lumber';
-import firstFloorText from './examples/first-floor.wall.md?raw';
+import secondFloorText from './examples/second-floor.wall.md?raw';
 import { parseProjectText } from './wallText';
 import { parseLength, round16, toFraction, type Units } from '../lib/units';
 import {
@@ -52,8 +52,11 @@ export interface DisplayPrefs {
 
 export const DEFAULT_PREFS: DisplayPrefs = { units: 'in', view: 'standing', showSheathing: 'on' };
 
-/** The first floor of the Buckley-Watanabe residence, from its architectural and structural plans. */
-export const EXAMPLE_PROJECT: Project = parseProjectText(firstFloorText).project ?? {
+/**
+ * The second floor of the Buckley-Watanabe residence's main house, from its architectural and structural
+ * plans. The first floor is in examples/first-floor.wall.md.
+ */
+export const EXAMPLE_PROJECT: Project = parseProjectText(secondFloorText).project ?? {
   title: '',
   notes: '',
   defaults: { ...DEFAULT_SETTINGS },

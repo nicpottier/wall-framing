@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import firstFloorText from './examples/first-floor.wall.md?raw';
 import { parseProjectText, projectToText } from './wallText';
 import { EXAMPLE_PROJECT, loadSaved, postCutList, type Project } from './project';
 import { resolveOpening, type WallInput } from './wall';
@@ -271,9 +272,11 @@ describe('beams', () => {
 });
 
 describe('first-floor example', () => {
+  const FIRST = parseProjectText(firstFloorText).project!;
+
   it('reads the plans file into the main house walls', () => {
     // In the order they're stood: east and west run through the corners, north and south go between them.
-    expect(EXAMPLE_PROJECT.walls.map((w) => w.name)).toEqual([
+    expect(FIRST.walls.map((w) => w.name)).toEqual([
       'East · kitchen',
       'East · bay, north return',
       'East · bay',
@@ -297,24 +300,37 @@ describe('first-floor example', () => {
       'Closet south',
       'Stair wall',
     ]);
-    expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'South · east')).toMatchObject({ length: '15-0 7/8', cornerLeft: 'inside', californiaLeft: 'none' });
-    expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'West · south')).toMatchObject({ cornerLeft: 'outside', californiaLeft: '2x6' });
-    const kitchen = EXAMPLE_PROJECT.walls.find((w) => w.name === 'East · kitchen')!;
+    expect(FIRST.walls.find((w) => w.name === 'South · east')).toMatchObject({ length: '15-0 7/8', cornerLeft: 'inside', californiaLeft: 'none' });
+    expect(FIRST.walls.find((w) => w.name === 'West · south')).toMatchObject({ cornerLeft: 'outside', californiaLeft: '2x6' });
+    const kitchen = FIRST.walls.find((w) => w.name === 'East · kitchen')!;
     expect(kitchen.openings.find((o) => o.label === 'D')).toMatchObject({ jacksPerSide: '6x6' });
-    expect(EXAMPLE_PROJECT.walls.every((w) => w.tall.length === 0)).toBe(true);
-    expect(EXAMPLE_PROJECT.walls.every((w) => w.planRun !== '')).toBe(true);
-    expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'Hall')).toMatchObject({ planX: '96 1/8', planY: '267 5/8', planRun: 'south' });
+    expect(FIRST.walls.every((w) => w.tall.length === 0)).toBe(true);
+    expect(FIRST.walls.every((w) => w.planRun !== '')).toBe(true);
+    expect(FIRST.walls.find((w) => w.name === 'Hall')).toMatchObject({ planX: '96 1/8', planY: '267 5/8', planRun: 'south' });
     // B2's posts stand on their own; the walls end at them.
-    expect(EXAMPLE_PROJECT.walls.filter((w) => w.posts.length)).toEqual([]);
-    expect(EXAMPLE_PROJECT.posts.map((p) => p.label)).toEqual(['P1 north', 'D', 'E', 'P1 south']);
-    expect(EXAMPLE_PROJECT.walls.filter((w) => w.beams.length).map((w) => [w.name, w.beams[0]!.span])).toEqual([
+    expect(FIRST.walls.filter((w) => w.posts.length)).toEqual([]);
+    expect(FIRST.posts.map((p) => p.label)).toEqual(['P1 north', 'D', 'E', 'P1 south']);
+    expect(FIRST.walls.filter((w) => w.beams.length).map((w) => [w.name, w.beams[0]!.span])).toEqual([
       ['Mudroom stub', 'full'],
       ['Hall', 'full'],
     ]);
-    const west = EXAMPLE_PROJECT.walls.find((w) => w.name === 'West · north')!;
+    const west = FIRST.walls.find((w) => w.name === 'West · north')!;
     expect(west.intersections.map((t) => t.label)).toEqual(['Bath north', 'Bath south']);
-    expect(EXAMPLE_PROJECT.walls.find((w) => w.name === 'Bath east')).toMatchObject({ studSize: '2x4', sheathed: 'no', californiaLeft: '2x4' });
-    expect(EXAMPLE_PROJECT.defaults).toMatchObject({ height: '9-1 1/4', windowHeadHeight: '7-8' });
+    expect(FIRST.walls.find((w) => w.name === 'Bath east')).toMatchObject({ studSize: '2x4', sheathed: 'no', californiaLeft: '2x4' });
+    expect(FIRST.defaults).toMatchObject({ height: '9-1 1/4', windowHeadHeight: '7-8' });
+  });
+});
+
+describe('second-floor example', () => {
+  it('is the example project: the main house walls only, every one placed', () => {
+    const names = EXAMPLE_PROJECT.walls.map((w) => w.name);
+    expect(names.slice(0, 7)).toEqual(['East', 'West · south', 'West · north', 'North', 'Fire wall jog', 'Fire wall jog, west', 'South']);
+    expect(names).toHaveLength(24);
+    expect(EXAMPLE_PROJECT.walls.every((w) => w.planRun !== '')).toBe(true);
+    expect(EXAMPLE_PROJECT.defaults).toMatchObject({ height: '8-1 1/4', windowHeadHeight: '6-11 1/4' });
+    expect(EXAMPLE_PROJECT.posts).toEqual([]);
+    const east = EXAMPLE_PROJECT.walls.find((w) => w.name === 'East')!;
+    expect(east.openings.filter((o) => o.header === '4x12').map((o) => o.label)).toEqual(['9a', '9b']);
   });
 });
 
