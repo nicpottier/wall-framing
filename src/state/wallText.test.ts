@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import firstFloorText from './examples/first-floor.wall.md?raw';
 import { parseProjectText, projectToText } from './wallText';
+import { parseLength } from '../lib/units';
 import { EXAMPLE_PROJECT, loadSaved, postCutList, type Project } from './project';
 import { resolveOpening, type WallInput } from './wall';
 
@@ -235,6 +236,16 @@ describe('freestanding posts', () => {
   });
 });
 
+describe('upper plate', () => {
+  it('reads and writes laps at each end', () => {
+    const { project, errors } = parseProjectText(`## Wall\n- length: 10-0\n- upper plate: left 24 long, right 2-0 short\n`);
+    expect(errors).toEqual([]);
+    expect(project!.walls[0]).toMatchObject({ upperLeft: '24 long', upperRight: '2-0 short' });
+    expect(parseProjectText(projectToText(project!)).project!.walls).toEqual(project!.walls);
+    expect(parseProjectText(`## Wall\n- length: 10-0\n- upper plate: left lots\n`).errors[0]!.message).toContain('left 24 long');
+  });
+});
+
 describe('plan positions', () => {
   it('reads and writes a wall\'s plan position', () => {
     const { project, errors } = parseProjectText(`## Wall\n- length: 10-0\n- plan: 5 1/2, 34-0 9/16, running east\n`);
@@ -324,13 +335,32 @@ describe('first-floor example', () => {
 describe('second-floor example', () => {
   it('is the example project: the main house walls only, every one placed', () => {
     const names = EXAMPLE_PROJECT.walls.map((w) => w.name);
-    expect(names.slice(0, 7)).toEqual(['East', 'West · south', 'West · north', 'North', 'Fire wall jog', 'Fire wall jog, west', 'South']);
-    expect(names).toHaveLength(24);
+    expect(names.slice(0, 11)).toEqual([
+      'East · north',
+      'East · middle',
+      'East · south',
+      'West · south',
+      'West · north',
+      'North · west',
+      'North · east',
+      'Fire wall jog',
+      'Fire wall jog, west',
+      'South · east',
+      'South · west',
+    ]);
+    expect(names).toHaveLength(28);
+    // 16' plates: no piece is longer.
+    expect(EXAMPLE_PROJECT.walls.every((w) => parseLength(w.length) <= 192)).toBe(true);
     expect(EXAMPLE_PROJECT.walls.every((w) => w.planRun !== '')).toBe(true);
     expect(EXAMPLE_PROJECT.defaults).toMatchObject({ height: '8-1 1/4', windowHeadHeight: '6-11 1/4' });
     expect(EXAMPLE_PROJECT.posts).toEqual([]);
-    const east = EXAMPLE_PROJECT.walls.find((w) => w.name === 'East')!;
-    expect(east.openings.filter((o) => o.header === '4x12').map((o) => o.label)).toEqual(['9a', '9b']);
+    const east = EXAMPLE_PROJECT.walls.filter((w) => w.name.startsWith('East'));
+    expect(east.flatMap((w) => w.openings.filter((o) => o.header === '4x12').map((o) => o.label))).toEqual(['9a', '9b']);
+    expect(east.map((w) => [w.upperLeft, w.upperRight])).toEqual([
+      ['', '24 short'],
+      ['24 long', '24 long'],
+      ['24 short', ''],
+    ]);
   });
 });
 

@@ -122,6 +122,12 @@ export interface WallInput extends WallSettings {
   planX: string;
   planY: string;
   planRun: '' | PlanRun;
+  /**
+   * The upper top plate at each end: "24 long" runs past the end, "24 short" stops short of it, so it
+   * laps the joint to the next section. Blank is flush.
+   */
+  upperLeft: string;
+  upperRight: string;
   openings: OpeningInput[];
   posts: PostInput[];
   tall: TallInput[];
@@ -129,7 +135,7 @@ export interface WallInput extends WallSettings {
   beams: BeamInput[];
 }
 
-export type WallSettingKey = keyof WallSettings | 'name' | 'length' | 'notes' | 'planX' | 'planY' | 'planRun';
+export type WallSettingKey = keyof WallSettings | 'name' | 'length' | 'notes' | 'planX' | 'planY' | 'planRun' | 'upperLeft' | 'upperRight';
 
 export const DEFAULT_SETTINGS: WallSettings = {
   height: '97 1/8',
@@ -168,6 +174,8 @@ export const EXAMPLE_WALL: WallInput = {
   planX: '',
   planY: '',
   planRun: '',
+  upperLeft: '',
+  upperRight: '',
   openings: [
     { id: 'o1', type: 'window', label: 'W1', from: 'left', offset: '4-6', width: '3-9', height: '3-7 1/2', ro: '', headHeight: '', header: 'auto', jacksPerSide: 'auto' },
     { id: 'o2', type: 'door', label: 'D1', from: 'right', offset: '5-9', width: '3-0', height: '6-8', ro: '', headHeight: '', header: 'auto', jacksPerSide: 'auto' },
@@ -456,6 +464,15 @@ export function resolveBeam(b: BeamInput, wall: WallInput): { x0: number; x1: nu
   return { x0, x1 };
 }
 
+/** "24 long" → 24, "24 short" → -24, blank → 0; NaN when it can't be read. */
+export function parseLap(text: string): number {
+  const t = text.trim();
+  if (!t) return 0;
+  const m = t.match(/^(.+?)\s+(long|short)$/i);
+  const d = m ? parseLength(m[1]!) : NaN;
+  return m && d >= 0 ? (m[2]!.toLowerCase() === 'long' ? d : -d) : NaN;
+}
+
 export interface Placement {
   /** Plan position of the left end, on the face the wall is seen from. */
   x: number;
@@ -596,6 +613,7 @@ export function toWallSpec(input: WallInput): ParsedWall {
       studs: input.studSize === '2x4' ? '2x4' : '2x6',
       intersections,
       beams,
+      upperPlate: { left: parseLap(input.upperLeft) || 0, right: parseLap(input.upperRight) || 0 },
       california: { left: californiaDepth(input.californiaLeft), right: californiaDepth(input.californiaRight) },
     },
     inputIssues,

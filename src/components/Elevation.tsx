@@ -148,11 +148,15 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
   const padT = flipped ? pad.bottom : pad.top;
   const padB = flipped ? pad.top : pad.bottom;
   const width = compact ? measured || 320 : Math.max(measured, MIN_WIDTH);
+  // Plates that run past the wall's ends widen the drawing.
+  const xMin = Math.min(0, ...members.map((m) => m.x));
+  const xMax = Math.max(L, ...members.map((m) => m.x + m.w));
+  const span = xMax - xMin;
   const ppi = fit
     ? Math.max(0.5, Math.min((width - padL - padR) / fit.length, (fit.maxHeight - padT - padB) / fit.height))
-    : Math.max(0.5, Math.min((width - padL - padR) / L, (MAX_HEIGHT - padT - padB) / zTop));
+    : Math.max(0.5, Math.min((width - padL - padR) / span, (MAX_HEIGHT - padT - padB) / zTop));
   const height = Math.round(padT + padB + zTop * ppi);
-  const ox = padL + (width - padL - padR - L * ppi) / 2;
+  const ox = padL + (width - padL - padR - span * ppi) / 2 - xMin * ppi;
   const v = makeView(orient, ox, padT, ppi, L, zTop, wall.layoutFrom);
   const { X, Y, sx, bt } = v;
 
@@ -295,9 +299,9 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
             {/* overall length */}
             <HDim x1={X(0)} x2={X(L)} y={Y(zTop) - 30 * bt} label={fmt(L)} ext={Y(leftSec.height)} />
             {/* overall height and stud length, off the wall's left end */}
-            <VDim x={X(0) - 70 * sx} y1={Y(framedTop(leftSec))} y2={Y(0)} label={wallLabel(leftSec)} ext={X(0)} side={v.side('left')} rotate />
+            <VDim x={X(xMin) - 70 * sx} y1={Y(framedTop(leftSec))} y2={Y(0)} label={wallLabel(leftSec)} ext={X(0)} side={v.side('left')} rotate />
             <VDim
-              x={X(0) - 36 * sx}
+              x={X(xMin) - 36 * sx}
               y1={Y(leftSec.plateBottom)}
               y2={Y(T)}
               label={`STUD ${fmt(leftSec.studLength)}`}
@@ -308,9 +312,9 @@ export function Elevation({ framing, fmt, highlight, onHighlight, showSheathing:
             {/* the right end too, when it is a different height */}
             {sections.length > 1 && Math.abs(rightSec.height - leftSec.height) > 1e-6 && (
               <>
-                <VDim x={X(L) + 70 * sx} y1={Y(framedTop(rightSec))} y2={Y(0)} label={wallLabel(rightSec)} ext={X(L)} side={v.side('right')} rotate />
+                <VDim x={X(xMax) + 70 * sx} y1={Y(framedTop(rightSec))} y2={Y(0)} label={wallLabel(rightSec)} ext={X(L)} side={v.side('right')} rotate />
                 <VDim
-                  x={X(L) + 36 * sx}
+                  x={X(xMax) + 36 * sx}
                   y1={Y(rightSec.plateBottom)}
                   y2={Y(T)}
                   label={`STUD ${fmt(rightSec.studLength)}`}

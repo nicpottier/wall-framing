@@ -65,6 +65,17 @@ export function WallSettings({ wall, dispatch }: Props) {
         <Segmented label="Layout from" value={wall.layoutFrom} options={[['left', 'Left'], ['right', 'Right']]} onChange={set('layoutFrom')} />
         <Segmented label="Top plate" value={wall.topPlates} options={[['1', 'Single'], ['2', 'Double']]} onChange={set('topPlates')} />
         <Segmented label="Exterior wall" value={wall.exterior} options={[['yes', 'Yes'], ['no', 'No']]} onChange={set('exterior')} />
+        {wall.topPlates === '2' && (
+          <>
+            <p className="field-group full">Upper top plate</p>
+            <Field label="At the left end" hint={'"24 long" laps the next section; "24 short" leaves room'}>
+              {(id) => <input id={id} type="text" autoComplete="off" value={wall.upperLeft} placeholder="Flush" onChange={(e) => set('upperLeft')(e.target.value)} />}
+            </Field>
+            <Field label="At the right end">
+              {(id) => <input id={id} type="text" autoComplete="off" value={wall.upperRight} placeholder="Flush" onChange={(e) => set('upperRight')(e.target.value)} />}
+            </Field>
+          </>
+        )}
         <p className="field-group full">Plan position</p>
         <Field label="Left end, east" hint="From the plan origin">
           {(id) => <LengthInput id={id} value={wall.planX} onChange={set('planX')} optional placeholder="—" />}

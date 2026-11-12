@@ -622,3 +622,15 @@ describe('posts at openings', () => {
     expect(f.issues.some((i) => i.message.startsWith("W1 and D share a 6x6 post, each header bearing on half of it; D's header sits 1/4\" higher"))).toBe(true);
   });
 });
+
+describe('upper plate lap', () => {
+  it('runs the upper plate long or short at the ends, leaving the lower plate flush', () => {
+    const f = frame(wall({ length: 96, upperPlate: { left: 24, right: -24 } }));
+    const [upper, lower] = of(f, 'topPlate').sort((a, b) => b.z - a.z);
+    expect([upper!.x, upper!.w]).toEqual([-24, 96]);
+    expect([lower!.x, lower!.w]).toEqual([0, 96]);
+    expect(f.cutList.find((g) => g.role === 'topPlate' && g.notes.some((n) => n.startsWith('Upper plate')))!.notes).toContain(
+      'Upper plate runs 24" past the left end and stops 24" short of the right end, lapping the joint to the next section',
+    );
+  });
+});

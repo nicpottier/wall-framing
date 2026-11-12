@@ -120,6 +120,11 @@ export interface WallSpec {
    */
   california?: { left: number; right: number };
   beams?: BeamSpec[];
+  /**
+   * How far the upper of a double top plate runs past each end (negative: held back), so it laps the
+   * joint to the next section of a wall built in pieces.
+   */
+  upperPlate?: { left: number; right: number };
 }
 
 // ---------- Outputs ----------
@@ -419,8 +424,12 @@ export function computeFraming(wall: WallSpec, fmt: Formatter): Framing | Framin
   for (const p of sections) {
     if (p.beam) continue;
     for (let i = 0; i < p.plates; i++) {
-      const w = p.x1 - p.x0;
-      add({ role: 'topPlate', x: p.x0, z: p.height - (i + 1) * T, w, h: T, length: w, lowerPlate: p.plates === 2 && i === 1 });
+      // The upper plate can run long or short at the wall's ends to lap the next section.
+      const upper = p.plates === 2 && i === 0;
+      const x0 = p.x0 - (upper && p === sections[0] ? (wall.upperPlate?.left ?? 0) : 0);
+      const x1 = p.x1 + (upper && p === sections[sections.length - 1] ? (wall.upperPlate?.right ?? 0) : 0);
+      const w = x1 - x0;
+      add({ role: 'topPlate', x: x0, z: p.height - (i + 1) * T, w, h: T, length: w, lowerPlate: p.plates === 2 && i === 1 });
     }
   }
 
@@ -1205,6 +1214,13 @@ function buildCutList(
     if (g.role === 'plate' || g.role === 'topPlate') {
       if (g.length > 192) g.notes.push("Longer than 16' stock; splice over a stud");
       if (g.role === 'topPlate' && wall.topPlates === 2) g.notes.push('Offset top plate splices at least 24"');
+      const lap = wall.upperPlate;
+      if (g.role === 'topPlate' && lap && (lap.left || lap.right) && members.some((m) => m.group === g.key && !m.lowerPlate)) {
+        const end = (d: number, side: string) =>
+          d > 0 ? `runs ${toFraction(d)}" past the ${side} end` : d < 0 ? `stops ${toFraction(-d)}" short of the ${side} end` : '';
+        const parts = [end(lap.left, 'left'), end(lap.right, 'right')].filter(Boolean);
+        if (parts.length) g.notes.push(`Upper plate ${parts.join(' and ')}, lapping the joint to the next section`);
+      }
       const cut = openings.filter((o) => o.topPlateCut);
       if (g.role === 'topPlate' && cut.length) {
         g.notes.push(`Lower plate cut at ${cut.map((o) => o.spec.label).join(', ')} header; MSTA24 across`);

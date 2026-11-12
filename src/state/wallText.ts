@@ -26,6 +26,7 @@ import type { CornerType } from '../lib/sheathing';
 import { parseLength, toFraction } from '../lib/units';
 import {
   DEFAULT_SETTINGS,
+  parseLap,
   parseSize,
   roughOpening,
   type OpeningInput,
@@ -288,7 +289,7 @@ export function parseProjectText(text: string): ParseResult {
         notesTarget = postNotes;
       } else {
         const draft: WallDraft = {
-          wall: { ...defaults, id: `w${walls.length + 1}`, name, length: '', notes: '', planX: '', planY: '', planRun: '', openings: [], posts: [], tall: [], intersections: [], beams: [] },
+          wall: { ...defaults, id: `w${walls.length + 1}`, name, length: '', notes: '', planX: '', planY: '', planRun: '', upperLeft: '', upperRight: '', openings: [], posts: [], tall: [], intersections: [], beams: [] },
           line,
           hasLength: false,
           pending: [],
@@ -349,6 +350,17 @@ export function parseProjectText(text: string): ParseResult {
         Object.assign(current().wall, { planX: lengthText(pm[1]!), planY: lengthText(pm[2]!), planRun: pm[3]!.toLowerCase() });
         return;
       }
+      if (key === 'upper plate') {
+        if (section !== 'wall') return err(line, 'upper plate belongs to a wall, not the defaults.');
+        const out: { upperLeft?: string; upperRight?: string } = {};
+        for (const c of clauses(value)) {
+          const um = c.match(/^(left|right)\s+(.+?\s+(?:long|short))$/i);
+          if (!um || Number.isNaN(parseLap(um[2]!))) return err(line, 'write the upper plate like "left 24 long, right 24 short" (past or short of each end).');
+          out[um[1]!.toLowerCase() === 'left' ? 'upperLeft' : 'upperRight'] = lengthText(um[2]!);
+        }
+        Object.assign(current().wall, out);
+        return;
+      }
       if (key === 'length') {
         if (section !== 'wall') return err(line, 'length belongs to a wall, not the defaults.');
         if (!isLen(lengthText(value))) return err(line, `length must be a length, like 20-0 or 240. Got "${value}".`);
@@ -357,7 +369,7 @@ export function parseProjectText(text: string): ParseResult {
         return;
       }
       const parse = SETTINGS[key];
-      if (!parse) return err(line, `Unknown setting "${kv[1]!.trim()}". Settings are: length, plan, ${Object.keys(SETTINGS).filter((k) => k !== 'spacing').join(', ')}.`);
+      if (!parse) return err(line, `Unknown setting "${kv[1]!.trim()}". Settings are: length, plan, upper plate, ${Object.keys(SETTINGS).filter((k) => k !== 'spacing').join(', ')}.`);
       const out = parse(value);
       if (typeof out === 'string') return err(line, out.charAt(0).toUpperCase() + out.slice(1) + '.');
       Object.assign(section === 'defaults' ? defaults : current().wall, out);
@@ -623,6 +635,8 @@ export function projectToText(project: Project): string {
   for (const wall of project.walls) {
     out.push('', `## ${wall.name || 'Wall'}`, `- length: ${wall.length}`);
     if (wall.planRun) out.push(`- plan: ${wall.planX}, ${wall.planY}, running ${wall.planRun}`);
+    const laps = [wall.upperLeft.trim() && `left ${wall.upperLeft.trim()}`, wall.upperRight.trim() && `right ${wall.upperRight.trim()}`].filter(Boolean);
+    if (laps.length) out.push(`- upper plate: ${laps.join(', ')}`);
     for (const [key, format] of FORMAT) {
       const value = format(wall);
       if (value !== format(project.defaults)) out.push(`- ${key}: ${value}`);

@@ -89,6 +89,7 @@ The overview's **Text** tab edits the whole project as plain text, kept in sync 
 - Openings: `<label>: <window|door> <W x H or callout>, <position>`, then any of `head`, `sill`, `header`, `jacks`, `ro W x H`.
 - Freestanding posts (under `## Posts`, after the walls): `<label>: <size> under <beam>, at <east>, <north>`, the post's center on the plan; its length is the project's wall height less the beam depth.
 - Posts in a wall (under `### Posts`): `<label>: <6x6|4x6|4x4|(2) studs|(3) studs|(4) studs>, <position to centerline>`.
+- Upper plate: `upper plate: left 24 long, right 24 short`, how far the upper top plate runs past (long) or stops short of each end, to lap the joint to the next piece.
 - Plan position: `plan: <x>, <y>, running <east|west|north|south>`, the wall's left end on the face it is seen from, measured east and north from the plan origin, and the way it runs to its right end. Its depth goes away from the viewer, so an exterior wall seen from inside runs with its outside face away. Walls without one are listed as not on the plan.
 - Beams (under `### Beams`): `<label>: <size>, <where>`, where is `X from left|right` for a beam crossing the wall (to its centerline), `X to Y from left|right` along a stretch, or `full length`.
 - Intersections (under `### Intersections`): `<label>: <2x4|2x6> wall, <position to its centerline>`, for a wall butting in partway along.
@@ -139,6 +140,10 @@ Left and right are always as seen **from inside** the building. Enter opening po
 ### Beams
 
 Beams are dropped (11/S4.2): the top is flush with the top of the top plates and the joists bear on it, so the plates stop wherever a beam passes. Where a beam comes down on a **freestanding post** (`## Posts` at the end of the file: `- P1: 6x6 under 5 1/2 x 11 7/8 GL, at 98 7/8, 2 3/4`, its center on the plan), the post stands on the subfloor and runs to the beam's underside, and the walls either side are built as separate pieces ending at it, their end studs nailed to it and their top plates strapped across the beam. These posts are on the plan, in the overview's posts table and in the combined cut list. A beam **crossing** a wall that carries its own post sits in a pocket over it, with no plates over it. A beam running **along** a wall caps it: the wall is framed to the beam's underside with a single plate, cut at the posts that carry the beam. Because the plates break at a crossing beam, a framer builds that wall in two pieces, and the example does the same.
+
+### Walls built in pieces
+
+Plates come in 16' lengths, so a longer wall is built in pieces, each its own wall. Joints go on a sheathing panel edge, so each piece is sheathed on the deck and the two end studs back the seam like double seam studs; they stay clear of openings and of walls butting in; and each piece keeps the whole wall's stud and panel layout (lay out from the same end, with the joint on a panel edge). The upper top plate laps each joint by at least 24" (`upper plate: left 24 long, right 24 short`): one piece holds it back and the next runs it long, and the drawing shows it running past the end.
 
 ### Intersections and corners
 
